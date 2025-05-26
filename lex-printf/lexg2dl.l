@@ -68,7 +68,8 @@
 \/\*([^*]|\*+[^*/])*\*+\/                       {printf("BLOCK COMMENT\n"); }
 
 
-[ \t\r\n]+                                      ;  // ignore
+\n                                              { return NEWLINE; }
+[ \t\r]+                                      ;  // ignora espaços e quebras de linha
 .                                               {printf("Invalid character: %s\n", yytext);}
 
 %%
