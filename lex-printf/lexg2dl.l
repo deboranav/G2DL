@@ -64,8 +64,8 @@
 \"([^\\\"]|\\.)*\"                              {printf("STRING(%s)\n",yytext);}
 \'([^\\\']|\\.)*\'                              {printf("STRING(%s)\n",yytext);}
 
-"//".*                                          {printf("LINE COMMENT(%s)\n",yytext);}
-\/\*([^*]|\*+[^*/])*\*+\/                       {printf("BLOCK COMMENT(%s)\n", yytext); }
+"//".*\n                                        {printf("LINE COMMENT (%s)\n", yytext);}
+\/\*([^*]|\*+[^*/])*\*+\/                       {printf("BLOCK COMMENT(%s)\n", yytext);}
 
 
 \n                                              { printf("NEW LINE\n"); }
