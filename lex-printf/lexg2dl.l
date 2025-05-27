@@ -65,10 +65,10 @@
 \'([^\\\']|\\.)*\'                              {printf("STRING(%s)\n",yytext);}
 
 "//".*                                          {printf("LINE COMMENT(%s)\n",yytext);}
-\/\*([^*]|\*+[^*/])*\*+\/                       {printf("BLOCK COMMENT\n"); }
+\/\*([^*]|\*+[^*/])*\*+\/                       {printf("BLOCK COMMENT(%s)\n", yytext); }
 
 
-\n                                              {printf("NEW LINE\n");}
+\n                                              { printf("NEW LINE\n"); }
 [ \t\r]+                                      ;  // ignora espaços e quebras de linha
 .                                               {printf("Invalid character: %s\n", yytext);}
 
