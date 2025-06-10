@@ -1,3 +1,6 @@
+ /* *** teste 123 
+/ teste */
+ 
  function particionar(array, low, high) {
       // elemento mais à direita como pivô
       pivo = array[high]

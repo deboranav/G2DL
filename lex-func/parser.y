@@ -1,118 +1,157 @@
 %{
-  #include <stdio.h>
-  #include <stdlib.h>
-  #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-  int yylex(void);
-  void yyerror(const char *s) {
-    fprintf(stderr, "Erro de sintaxe: %s\n", s);
-  }
+int yylex();
+void yyerror(const char *msg) { fprintf(stderr, "Erro: %s\n", msg); }
 %}
 
 %union {
-  int ival;
-  float fval;
-  char *sval;
+    int intVal;
+    float floatVal;
+    char *strVal;
 }
 
-%token <sval> ID STRING
-%token <ival> INTEGER
-%token <fval> FLOAT
-
-%token IF ELSE ELSEIF WHILE FOR FUNCTION RETURN BREAK
-%token TRUE FALSE
-%token INT_TYPE FLOAT_TYPE STRING_TYPE
-
-%token PLUS_ASSIGN MINUS_ASSIGN POWER_ASSIGN MULT_ASSIGN DIV_ASSIGN MOD_ASSIGN
-%token EQ NEQ LE GE ASSIGN LT GT
-%token POWER PLUS MINUS MULT DIV MOD
+%token FUNCTION RETURN BREAK IF ELSE WHILE FOR TRUE FALSE
+%token INT STRING
+%token <strVal> ID STRING_LITERAL
+%token <intVal> INTEGER
+%token <floatVal> FLOAT
+%token ASSIGNMENT PLUS MINUS MULTIPLY DIVIDE MOD POWER
+%token EQUAL NOT_EQUAL LESS_THAN GREATER_THAN LESS_THAN_OR_EQUAL GREATER_THAN_OR_EQUAL
 %token AND OR NOT
-%token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE
+%token PLUS_ASSIGNMENT MINUS_ASSIGNMENT MULTIPLY_ASSIGNMENT DIVIDE_ASSIGNMENT MOD_ASSIGNMENT POWER_ASSIGNMENT
+%token LEFT_PARENTHESIS RIGHT_PARENTHESIS LEFT_CURLY_BRACKET RIGHT_CURLY_BRACKET
+%token LEFT_SQUARE_BRACKET RIGHT_SQUARE_BRACKET
 %token COMMA COLON
-%token NEWLINE
-%token ERROR
 
-%start programa
+%left OR
+%left AND
+%left EQUAL NOT_EQUAL
+%left LESS_THAN GREATER_THAN LESS_THAN_OR_EQUAL GREATER_THAN_OR_EQUAL
+%left PLUS MINUS
+%left MULTIPLY DIVIDE MOD
+%right POWER
+%right NOT
 
 %%
 
-programa:
-    lista_comandos
-;
+program:
+    statements
+    ;
 
-lista_comandos:
-    lista_comandos comando
-  | lista_comandos NEWLINE
-  | comando
-;
+statements:
+    statements statement
+    | /* vazio */
+    ;
 
-comando:
-    atribuicao NEWLINE
-  | comando_controle NEWLINE
-  | chamada_funcao NEWLINE
-  | RETURN expressao NEWLINE
-  | BREAK NEWLINE
-;
+statement:
+    function_decl
+    | assignment
+    | expression
+    | control_structure
+    | RETURN expression
+    | function_call
+    ;
 
-declaracao_funcao:
-    FUNCTION ID LPAREN parametros RPAREN LBRACE lista_comandos RBRACE
-;
+function_decl:
+    FUNCTION ID LEFT_PARENTHESIS parameters RIGHT_PARENTHESIS block
+    ;
 
-parametros:
-    lista_parametros
-  | /* vazio */
-;
+parameters:
+    parameter_list
+    | /* vazio */
+    ;
 
-lista_parametros:
-    tipo ID
-  | lista_parametros COMMA tipo ID
-;
+parameter_list:
+    parameter
+    | parameter_list COMMA parameter
+    ;
 
-tipo:
-    INT_TYPE
-  | FLOAT_TYPE
-  | STRING_TYPE
-;
+parameter:
+    ID
+    ;
 
-atribuicao:
-    ID ASSIGN expressao
-  | ID PLUS_ASSIGN expressao
-  | ID MINUS_ASSIGN expressao
-  | ID MULT_ASSIGN expressao
-  | ID DIV_ASSIGN expressao
-  | ID POWER_ASSIGN expressao
-  | ID MOD_ASSIGN expressao
-;
+block:
+    LEFT_CURLY_BRACKET statements RIGHT_CURLY_BRACKET
+    ;
 
-comando_controle:
-    IF LPAREN expressao RPAREN LBRACE lista_comandos RBRACE
-  | IF LPAREN expressao RPAREN LBRACE lista_comandos RBRACE ELSE LBRACE lista_comandos RBRACE
-  | WHILE LPAREN expressao RPAREN LBRACE lista_comandos RBRACE
-  | FOR LPAREN atribuicao NEWLINE expressao NEWLINE atribuicao RPAREN LBRACE lista_comandos RBRACE
-;
+assignment:
+    ID ASSIGNMENT expression
+    | array_access ASSIGNMENT expression
+    ;
 
-chamada_funcao:
-    ID LPAREN argumentos RPAREN NEWLINE
-;
+expression:
+    expression PLUS expression
+    | expression MINUS expression
+    | expression MULTIPLY expression
+    | expression DIVIDE expression
+    | expression MOD expression
+    | expression POWER expression
+    | expression EQUAL expression
+    | expression NOT_EQUAL expression
+    | expression LESS_THAN expression
+    | expression GREATER_THAN expression
+    | expression LESS_THAN_OR_EQUAL expression
+    | expression GREATER_THAN_OR_EQUAL expression
+    | expression AND expression
+    | expression OR expression
+    | NOT expression
+    | atom
+    ;
 
-argumentos:
-    lista_argumentos
-  | /* vazio */
-;
+atom:
+      literal
+    | variable
+    | array_access
+    | grouped_expression
+    ;
 
-lista_argumentos:
-    expressao
-  | lista_argumentos COMMA expressao
-;
+grouped_expression:
+    LEFT_PARENTHESIS expression RIGHT_PARENTHESIS
+    ;
 
-expressao:
-    expressao PLUS expressao
-  | expressao MINUS expressao
-  | expressao MULT expressao
-  | expressao DIV expressao
-  | expressao MOD expressao
-  | expressao POWER expressao
-  | expressao EQ expressao
-  | expressao NEQ expressao
-  | expressao LT expressao
-  | expressao LE
+literal:
+      INTEGER
+    | FLOAT
+    | STRING_LITERAL
+    | TRUE
+    | FALSE
+    ;
+
+variable:
+    ID
+    ;
+
+array_access:
+    ID LEFT_SQUARE_BRACKET expression RIGHT_SQUARE_BRACKET
+    ;
+
+function_call:
+    ID LEFT_PARENTHESIS argument_list RIGHT_PARENTHESIS
+    ;
+
+argument_list:
+    arguments
+    | /* vazio */
+    ;
+
+arguments:
+    expression
+    | arguments COMMA expression
+    ;
+
+control_structure:
+    IF expression block
+    | IF expression block ELSE block
+    | WHILE expression block
+    | FOR LEFT_PARENTHESIS INT ID COLON function_call RIGHT_PARENTHESIS block
+    ;
+
+%%
+
+int yydebug = 1;
+
+int main() {
+    return yyparse();
+}
