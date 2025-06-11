@@ -18,6 +18,7 @@
 "break"                    { return BREAK; }
 "true"                     { return TRUE; }
 "false"                    { return FALSE; }
+"printf"                   { return PRINTF; }
 
 "+="                       { return PLUS_ASSIGNMENT; }
 "-="                       { return MINUS_ASSIGNMENT; }

@@ -39,7 +39,7 @@
 # define YY_YY_Y_TAB_H_INCLUDED
 /* Debug traces.  */
 #ifndef YYDEBUG
-# define YYDEBUG 0
+# define YYDEBUG 1
 #endif
 #if YYDEBUG
 extern int yydebug;
@@ -98,72 +98,23 @@ extern int yydebug;
     LEFT_SQUARE_BRACKET = 299,     /* LEFT_SQUARE_BRACKET  */
     RIGHT_SQUARE_BRACKET = 300,    /* RIGHT_SQUARE_BRACKET  */
     COMMA = 301,                   /* COMMA  */
-    COLON = 302                    /* COLON  */
+    COLON = 302,                   /* COLON  */
+    PRINTF = 303                   /* PRINTF  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
-/* Token kinds.  */
-#define YYEMPTY -2
-#define YYEOF 0
-#define YYerror 256
-#define YYUNDEF 257
-#define FUNCTION 258
-#define RETURN 259
-#define BREAK 260
-#define IF 261
-#define ELSE 262
-#define WHILE 263
-#define FOR 264
-#define TRUE 265
-#define FALSE 266
-#define INT 267
-#define STRING 268
-#define ID 269
-#define STRING_LITERAL 270
-#define INTEGER 271
-#define FLOAT 272
-#define ASSIGNMENT 273
-#define PLUS 274
-#define MINUS 275
-#define MULTIPLY 276
-#define DIVIDE 277
-#define MOD 278
-#define POWER 279
-#define EQUAL 280
-#define NOT_EQUAL 281
-#define LESS_THAN 282
-#define GREATER_THAN 283
-#define LESS_THAN_OR_EQUAL 284
-#define GREATER_THAN_OR_EQUAL 285
-#define AND 286
-#define OR 287
-#define NOT 288
-#define PLUS_ASSIGNMENT 289
-#define MINUS_ASSIGNMENT 290
-#define MULTIPLY_ASSIGNMENT 291
-#define DIVIDE_ASSIGNMENT 292
-#define MOD_ASSIGNMENT 293
-#define POWER_ASSIGNMENT 294
-#define LEFT_PARENTHESIS 295
-#define RIGHT_PARENTHESIS 296
-#define LEFT_CURLY_BRACKET 297
-#define RIGHT_CURLY_BRACKET 298
-#define LEFT_SQUARE_BRACKET 299
-#define RIGHT_SQUARE_BRACKET 300
-#define COMMA 301
-#define COLON 302
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 9 "parser.y"
+#line 11 "parser_g2dl.y"
 
     int intVal;
     float floatVal;
     char *strVal;
 
-#line 167 "y.tab.h"
+#line 118 "y.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

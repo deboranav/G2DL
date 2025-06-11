@@ -31,3 +31,10 @@
           quickSort(array, pi + 1, high)
       }
    }
+
+   function main() {
+        data = [10, 7, 8, 9, 1, 5]
+        size = 6
+        quickSort(data, 0, size - 1)
+        printf(data)
+    }
