@@ -11,3 +11,9 @@ $ make
 ```bash
 $ ./compiler_g2dl shorter_2.txt
 ```
+
+### Passo extra para limpar o compilador:
+
+```bash
+$ make clean
+```
