@@ -1,14 +1,16 @@
 %{
-#include "y.tab.h"
+#include "parser_g2dl.tab.h" 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 %}
 
+%option yylineno
 %option noyywrap
 
 %%
 
-"else if"                  { return ELSE; }
+"else if"                  { return ELSE_IF; }
 "if"                       { return IF; }
 "else"                     { return ELSE; }
 "while"                    { return WHILE; }
@@ -60,7 +62,7 @@
 "float"                    { return FLOAT; }
 "string"                   { return STRING; }
 
-[0-9]+\.[0-9]+             { yylval.floatVal = atof(yytext); return FLOAT; }
+[0-9]+\.[0-9]+             { yylval.floatVal = atof(yytext); return FLOAT_LITERAL; }
 [0-9]+                     { yylval.intVal = atoi(yytext); return INTEGER; }
 
 \"([^\\\"]|\\.)*\"         { yylval.strVal = strdup(yytext); return STRING_LITERAL; }
