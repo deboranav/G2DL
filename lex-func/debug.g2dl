@@ -1,0 +1,24 @@
+function soma(a, b) {
+    return a + b;
+}
+
+function main() {
+    int resultado;
+    resultado = soma(10, 5);
+    printf("Resultado: ");
+    printf(resultado);
+    
+    if resultado > 10 {
+        printf("Maior que 10");
+    } else {
+        printf("10 ou menor");
+    }
+
+    for (int i : function() {
+        printf("Iterando...");
+    }) 
+
+    while resultado != 0 {
+        resultado = resultado - 1;
+    }
+}
