@@ -20,7 +20,7 @@ $(L_C_FILE): $(L_FILE) $(Y_H_FILE)
 	$(LEX) -o $(L_C_FILE) $(L_FILE)
 
 $(Y_C_FILE) $(Y_H_FILE): $(Y_FILE)
-	$(YACC) -d -o $(Y_C_FILE) $(Y_FILE)
+	$(YACC) -d -Wcounterexamples -o $(Y_C_FILE) $(Y_FILE)
 
 clean:
 	rm -f $(TARGET) $(L_C_FILE) $(Y_C_FILE) $(Y_H_FILE)

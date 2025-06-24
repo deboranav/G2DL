@@ -10,7 +10,6 @@
 
 %%
 
-"else if"                  { return ELSE_IF; }
 "if"                       { return IF; }
 "else"                     { return ELSE; }
 "while"                    { return WHILE; }

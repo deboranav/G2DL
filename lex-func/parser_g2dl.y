@@ -4,14 +4,11 @@
 #include <string.h>
 #include <math.h>
 
-// Protótipos
 int yylex(void);
 void yyerror(const char *s);
 
-// Variáveis globais do Flex
 extern int yylineno;
-extern FILE *yyin; // <<-- CORREÇÃO: Declarar yyin aqui
-
+extern FILE *yyin;
 %}
 
 %debug
@@ -22,7 +19,7 @@ extern FILE *yyin; // <<-- CORREÇÃO: Declarar yyin aqui
     char *strVal;
 }
 
-%token FUNCTION RETURN BREAK IF ELSE ELSE_IF WHILE FOR TRUE FALSE
+%token FUNCTION RETURN BREAK IF ELSE WHILE FOR TRUE FALSE
 %token INT STRING FLOAT
 %token <strVal> ID STRING_LITERAL
 %token <intVal> INTEGER
@@ -39,9 +36,6 @@ extern FILE *yyin; // <<-- CORREÇÃO: Declarar yyin aqui
 %type <floatVal> expression
 %type <strVal> variable
 
-%nonassoc THEN
-%nonassoc ELSE
-%right ASSIGNMENT
 %left OR
 %left AND
 %left EQUAL NOT_EQUAL
@@ -50,6 +44,8 @@ extern FILE *yyin; // <<-- CORREÇÃO: Declarar yyin aqui
 %left MULTIPLY DIVIDE MOD
 %right POWER
 %right NOT
+%nonassoc THEN
+%nonassoc ELSE
 
 %start program
 
@@ -57,7 +53,7 @@ extern FILE *yyin; // <<-- CORREÇÃO: Declarar yyin aqui
 
 program:
     statements
-    | /* um programa pode ser vazio */
+    | /* vazio */
     ;
 
 statements:
@@ -71,10 +67,9 @@ statement:
     | expression ';'    { printf("Resultado da expressão: %f\n", $1); }
     | control_structure
     | RETURN expression ';' { printf("Retornando valor %f\n", $2); }
-    | function_call ';'
     | printf_statement
     | block
-    | error ';' { fprintf(stderr, "Erro de sintaxe. Tentando recuperar em ';'\n"); yyerrok; }
+    | error ';' { fprintf(stderr, "Erro de sintaxe na linha %d. Tentando recuperar em ';'\n", yylineno); yyerrok; }
     ;
 
 printf_statement:
@@ -100,16 +95,27 @@ block:
     ;
 
 assignment:
-    variable ASSIGNMENT expression { printf("Atribuição para a variável %s\n", $1); free($1); }
-    | array_access ASSIGNMENT expression
+    variable assignment_operator expression { printf("Atribuição para a variável %s\n", $1); free($1); }
+    | array_access assignment_operator expression
+    ;
+
+assignment_operator:
+    ASSIGNMENT
+    | PLUS_ASSIGNMENT
+    | MINUS_ASSIGNMENT
+    | MULTIPLY_ASSIGNMENT
+    | DIVIDE_ASSIGNMENT
+    | MOD_ASSIGNMENT
+    | POWER_ASSIGNMENT
     ;
 
 expression:
-    INTEGER                     { $$ = $1; }
+    INTEGER                     { $$ = (float)$1; }
     | FLOAT_LITERAL             { $$ = $1; }
-    | variable                  { /* Busca na tabela de símbolos */ printf("Usando variável %s\n", $1); free($1); $$ = 0.0; }
+    | variable                  { printf("Usando variável %s\n", $1); free($1); $$ = 0.0; }
     | function_call             { $$ = 0.0; }
     | array_access              { $$ = 0.0; }
+    | array_literal             { $$ = 0.0; }
     | TRUE                      { $$ = 1.0; }
     | FALSE                     { $$ = 0.0; }
     | expression PLUS expression        { $$ = $1 + $3; }
@@ -130,6 +136,15 @@ expression:
     | LEFT_PARENTHESIS expression RIGHT_PARENTHESIS { $$ = $2; }
     ;
 
+array_literal:
+    LEFT_SQUARE_BRACKET optional_arg_list RIGHT_SQUARE_BRACKET
+    ;
+
+optional_arg_list:
+    /* vazio */
+    | argument_list
+    ;
+
 variable:
     ID { $$ = $1; }
     ;
@@ -142,21 +157,14 @@ function_call:
     ID LEFT_PARENTHESIS argument_list RIGHT_PARENTHESIS
     ;
 
-
 argument_list:
-    /* vazio */
-    | arguments
-    ;
-
-arguments:
     expression
-    | arguments COMMA expression
+    | argument_list COMMA expression
     ;
 
 control_structure:
     IF expression block %prec THEN
     | IF expression block ELSE block
-    | ELSE_IF expression block
     | WHILE expression block
     | FOR LEFT_PARENTHESIS INT ID COLON function_call RIGHT_PARENTHESIS block
     ;
