@@ -48,6 +48,7 @@ extern FILE *yyin;
 %nonassoc ELSE
 
 %start program
+%precedence ARRAY_LITERAL
 
 %%
 
@@ -137,12 +138,12 @@ expression:
     ;
 
 array_literal:
-    LEFT_SQUARE_BRACKET optional_arg_list RIGHT_SQUARE_BRACKET
+    LEFT_SQUARE_BRACKET array_elements_non_empty RIGHT_SQUARE_BRACKET
     ;
 
-optional_arg_list:
-    /* vazio */
-    | argument_list
+array_elements_non_empty:
+    expression
+    | array_elements_non_empty COMMA expression
     ;
 
 variable:
@@ -158,9 +159,16 @@ function_call:
     ;
 
 argument_list:
-    expression
-    | argument_list COMMA expression
+    /* vazio */
+    | argument_list_non_empty
     ;
+
+argument_list_non_empty:
+    expression
+    | argument_list_non_empty COMMA expression
+    ;
+
+
 
 control_structure:
     IF expression block %prec THEN
@@ -168,6 +176,8 @@ control_structure:
     | WHILE expression block
     | FOR LEFT_PARENTHESIS INT ID COLON function_call RIGHT_PARENTHESIS block
     ;
+
+
 
 %%
 

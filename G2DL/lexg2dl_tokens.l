@@ -10,6 +10,8 @@
 
 %%
 
+#define YY_USER_ACTION printf("TOKEN: %s\n", yytext);
+
 "if"                       { return IF; }
 "else"                     { return ELSE; }
 "while"                    { return WHILE; }
@@ -56,6 +58,8 @@
 
 ","                        { return COMMA; }
 ":"                        { return COLON; }
+";"                        { return ';'; }
+
 
 "int"                      { return INT; }
 "float"                    { return FLOAT; }
