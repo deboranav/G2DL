@@ -101,8 +101,8 @@ extern int yydebug;
     COMMA = 302,                   /* COMMA  */
     COLON = 303,                   /* COLON  */
     PRINTF = 304,                  /* PRINTF  */
-    THEN = 305,                    /* THEN  */
-    ARRAY_LITERAL = 306            /* ARRAY_LITERAL  */
+    INPUT = 305,                   /* INPUT  */
+    THEN = 306                     /* THEN  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -111,13 +111,15 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 16 "parser_g2dl.y"
+#line 23 "parser_g2dl.y"
 
     int intVal;
     float floatVal;
     char *strVal;
+    RuntimeValue runtimeVal;
+    ArgumentNode *argList;
 
-#line 121 "parser_g2dl.tab.h"
+#line 123 "parser_g2dl.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

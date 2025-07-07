@@ -73,14 +73,21 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <stdarg.h>
+
+#include "types.h"
+#include "symbol_table.h"
 
 int yylex(void);
 void yyerror(const char *s);
+void my_printf_runtime(char *format_string, ArgumentNode *args_list);
+void free_argument_list(ArgumentNode *list);
+RuntimeValue runtime_input();
 
 extern int yylineno;
 extern FILE *yyin;
 
-#line 84 "parser_g2dl.tab.c"
+#line 91 "parser_g2dl.tab.c"
 
 # ifndef YY_CAST
 #  ifdef __cplusplus
@@ -158,29 +165,30 @@ enum yysymbol_kind_t
   YYSYMBOL_COMMA = 47,                     /* COMMA  */
   YYSYMBOL_COLON = 48,                     /* COLON  */
   YYSYMBOL_PRINTF = 49,                    /* PRINTF  */
-  YYSYMBOL_THEN = 50,                      /* THEN  */
-  YYSYMBOL_ARRAY_LITERAL = 51,             /* ARRAY_LITERAL  */
+  YYSYMBOL_INPUT = 50,                     /* INPUT  */
+  YYSYMBOL_THEN = 51,                      /* THEN  */
   YYSYMBOL_52_ = 52,                       /* ';'  */
   YYSYMBOL_YYACCEPT = 53,                  /* $accept  */
   YYSYMBOL_program = 54,                   /* program  */
   YYSYMBOL_statements = 55,                /* statements  */
   YYSYMBOL_statement = 56,                 /* statement  */
   YYSYMBOL_printf_statement = 57,          /* printf_statement  */
-  YYSYMBOL_function_decl = 58,             /* function_decl  */
-  YYSYMBOL_parameters = 59,                /* parameters  */
-  YYSYMBOL_parameter_list = 60,            /* parameter_list  */
-  YYSYMBOL_block = 61,                     /* block  */
-  YYSYMBOL_assignment = 62,                /* assignment  */
-  YYSYMBOL_assignment_operator = 63,       /* assignment_operator  */
-  YYSYMBOL_expression = 64,                /* expression  */
-  YYSYMBOL_array_literal = 65,             /* array_literal  */
-  YYSYMBOL_array_elements_non_empty = 66,  /* array_elements_non_empty  */
-  YYSYMBOL_variable = 67,                  /* variable  */
-  YYSYMBOL_array_access = 68,              /* array_access  */
-  YYSYMBOL_function_call = 69,             /* function_call  */
-  YYSYMBOL_argument_list = 70,             /* argument_list  */
-  YYSYMBOL_argument_list_non_empty = 71,   /* argument_list_non_empty  */
-  YYSYMBOL_control_structure = 72          /* control_structure  */
+  YYSYMBOL_argument_list_printf = 58,      /* argument_list_printf  */
+  YYSYMBOL_function_decl = 59,             /* function_decl  */
+  YYSYMBOL_parameters = 60,                /* parameters  */
+  YYSYMBOL_parameter_list = 61,            /* parameter_list  */
+  YYSYMBOL_block = 62,                     /* block  */
+  YYSYMBOL_assignment = 63,                /* assignment  */
+  YYSYMBOL_assignment_operator = 64,       /* assignment_operator  */
+  YYSYMBOL_expression = 65,                /* expression  */
+  YYSYMBOL_array_literal = 66,             /* array_literal  */
+  YYSYMBOL_array_elements_non_empty = 67,  /* array_elements_non_empty  */
+  YYSYMBOL_variable = 68,                  /* variable  */
+  YYSYMBOL_array_access = 69,              /* array_access  */
+  YYSYMBOL_function_call = 70,             /* function_call  */
+  YYSYMBOL_argument_list = 71,             /* argument_list  */
+  YYSYMBOL_argument_list_non_empty = 72,   /* argument_list_non_empty  */
+  YYSYMBOL_control_structure = 73          /* control_structure  */
 };
 typedef enum yysymbol_kind_t yysymbol_kind_t;
 
@@ -297,7 +305,7 @@ typedef int yytype_uint16;
 
 
 /* Stored state numbers (used for stacks). */
-typedef yytype_int8 yy_state_t;
+typedef yytype_uint8 yy_state_t;
 
 /* State numbers in computations.  */
 typedef int yy_state_fast_t;
@@ -506,18 +514,18 @@ union yyalloc
 #endif /* !YYCOPY_NEEDED */
 
 /* YYFINAL -- State number of the termination state.  */
-#define YYFINAL  46
+#define YYFINAL  49
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   347
+#define YYLAST   385
 
 /* YYNTOKENS -- Number of terminals.  */
 #define YYNTOKENS  53
 /* YYNNTS -- Number of nonterminals.  */
-#define YYNNTS  20
+#define YYNNTS  21
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  67
+#define YYNRULES  73
 /* YYNSTATES -- Number of states.  */
-#define YYNSTATES  125
+#define YYNSTATES  139
 
 /* YYMAXUTOK -- Last valid token kind.  */
 #define YYMAXUTOK   306
@@ -569,15 +577,16 @@ static const yytype_int8 yytranslate[] =
 
 #if YYDEBUG
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
-static const yytype_uint8 yyrline[] =
+static const yytype_int16 yyrline[] =
 {
-       0,    56,    56,    57,    61,    62,    66,    67,    68,    69,
-      70,    71,    72,    73,    77,    81,    84,    86,    90,    91,
-      95,    99,   100,   104,   105,   106,   107,   108,   109,   110,
-     114,   115,   116,   117,   118,   119,   120,   121,   122,   123,
-     124,   125,   126,   127,   128,   129,   130,   131,   132,   133,
-     134,   135,   136,   137,   141,   145,   146,   150,   154,   158,
-     161,   163,   167,   168,   174,   175,   176,   177
+       0,    67,    67,    68,    72,    73,    77,    78,    79,    80,
+      81,    87,    88,    89,    93,    99,   104,   150,   155,   170,
+     173,   175,   179,   180,   184,   188,   200,   204,   205,   206,
+     207,   208,   209,   210,   214,   215,   216,   217,   235,   236,
+     237,   238,   239,   240,   244,   250,   255,   260,   266,   273,
+     279,   289,   298,   303,   308,   313,   318,   323,   328,   332,
+     337,   341,   342,   346,   350,   354,   357,   359,   363,   364,
+     368,   369,   370,   371
 };
 #endif
 
@@ -603,8 +612,8 @@ static const char *const yytname[] =
   "MOD_ASSIGNMENT", "POWER_ASSIGNMENT", "LEFT_PARENTHESIS",
   "RIGHT_PARENTHESIS", "LEFT_CURLY_BRACKET", "RIGHT_CURLY_BRACKET",
   "LEFT_SQUARE_BRACKET", "RIGHT_SQUARE_BRACKET", "COMMA", "COLON",
-  "PRINTF", "THEN", "ARRAY_LITERAL", "';'", "$accept", "program",
-  "statements", "statement", "printf_statement", "function_decl",
+  "PRINTF", "INPUT", "THEN", "';'", "$accept", "program", "statements",
+  "statement", "printf_statement", "argument_list_printf", "function_decl",
   "parameters", "parameter_list", "block", "assignment",
   "assignment_operator", "expression", "array_literal",
   "array_elements_non_empty", "variable", "array_access", "function_call",
@@ -618,7 +627,7 @@ yysymbol_name (yysymbol_kind_t yysymbol)
 }
 #endif
 
-#define YYPACT_NINF (-47)
+#define YYPACT_NINF (-45)
 
 #define yypact_value_is_default(Yyn) \
   ((Yyn) == YYPACT_NINF)
@@ -632,19 +641,20 @@ yysymbol_name (yysymbol_kind_t yysymbol)
    STATE-NUM.  */
 static const yytype_int16 yypact[] =
 {
-      84,   -46,    -4,    55,    55,    55,   -33,   -47,   -47,    -2,
-     -47,   -47,    55,    55,   151,    55,   -11,    31,   104,   -47,
-     -47,   -47,   -47,   -20,   181,   -47,   -12,   -12,   -47,   -47,
-     -47,    -1,   195,   -47,   -47,   255,   255,    29,    55,    55,
-     -47,   279,   133,   302,   -25,    55,   -47,   -47,   -47,    55,
-      55,    55,    55,    55,    55,    55,    55,    55,    55,    55,
-      55,    55,    55,   -47,   -47,   -47,   -47,   -47,   -47,   -47,
-     -47,    55,    55,    30,   -47,    37,   -47,    45,   302,    21,
-      17,   228,   -47,   -47,   -47,    55,    25,    53,    53,    46,
-      46,    46,    46,   316,   316,    -7,    -7,    -7,    -7,   242,
-     214,   302,   302,   -47,    38,    32,    40,    49,   -47,    55,
-     -47,   302,    34,    40,    83,   -47,    88,   302,   -47,   -47,
-     -47,    68,    69,    40,   -47
+      87,   -44,     3,   200,   200,   200,    -5,   -45,   -45,   -24,
+     -45,   -45,   -45,   200,   200,   179,   200,    37,    38,    28,
+     109,   -45,   -45,   -45,   -45,    29,   231,   -45,   -13,   -13,
+     -45,   -45,   -45,    39,   245,   -45,   -45,   305,   305,    70,
+     200,   200,   -45,   329,   159,   352,   -31,    32,    41,   -45,
+     -45,   -45,   200,   200,   200,   200,   200,   200,   200,   200,
+     200,   200,   200,   200,   200,   200,   -45,   -45,   -45,   -45,
+     -45,   -45,   -45,   -45,   200,   200,    69,   -45,    82,   -45,
+      77,   352,    52,    53,   278,   -45,   -45,   -45,   200,    57,
+     -35,   -45,     8,     8,    81,    81,    81,    81,    45,    45,
+      21,    21,    21,    21,   292,   264,   352,   352,   -45,    65,
+      61,    71,    74,   -45,   200,   -45,   352,    83,    86,   200,
+      71,   108,   -45,   114,   352,   -45,   -45,   -33,   352,   -45,
+     -45,    92,    97,    88,   200,    71,   -45,   352,   -45
 };
 
 /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -652,100 +662,112 @@ static const yytype_int16 yypact[] =
    means the default is an error.  */
 static const yytype_int8 yydefact[] =
 {
-       0,     0,     0,     0,     0,     0,     0,    36,    37,    57,
-      30,    31,     0,     0,     0,     0,     0,     0,     0,     4,
-      11,     6,    12,     0,     0,    35,    32,    34,    33,     9,
-      13,     0,     0,    32,    34,     0,     0,     0,    60,     0,
-      52,     0,     0,    55,     0,    60,     1,     5,     7,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     8,    23,    24,    25,    26,    27,    28,
-      29,     0,     0,    16,    10,    64,    66,     0,    62,     0,
-      61,     0,    53,    20,    54,     0,     0,    38,    39,    40,
-      41,    42,    43,    44,    45,    46,    47,    48,    49,    50,
-      51,    21,    22,    18,     0,    17,     0,     0,    59,     0,
-      58,    56,     0,     0,     0,    65,     0,    63,    14,    15,
-      19,     0,     0,     0,    67
+       0,     0,     0,     0,     0,     0,     0,    41,    42,    63,
+      36,    34,    35,     0,     0,     0,     0,     0,     0,     0,
+       0,     4,    11,     6,    12,     0,     0,    40,    37,    39,
+      38,     9,    13,     0,     0,    37,    39,     0,     0,     0,
+      66,     0,    58,     0,     0,    61,     0,     0,     0,     1,
+       5,     7,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     8,    27,    28,    29,
+      30,    31,    32,    33,     0,     0,    20,    10,    70,    72,
+       0,    68,     0,    67,     0,    59,    24,    60,     0,     0,
+       0,    43,    44,    45,    46,    47,    48,    49,    50,    51,
+      52,    53,    54,    55,    56,    57,    25,    26,    22,     0,
+      21,     0,     0,    65,     0,    64,    62,     0,     0,     0,
+       0,     0,    71,     0,    69,    16,    15,     0,    17,    19,
+      23,     0,     0,     0,     0,     0,    14,    18,    73
 };
 
 /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
-     -47,   -47,   102,   -13,   -47,   -47,   -47,   -47,   -32,   -47,
-      90,    -3,   -47,   -47,    19,    20,     4,    78,   -47,   -47
+     -45,   -45,   119,   -15,   -45,   -45,   -45,   -45,   -45,   -34,
+     -45,   112,    -3,   -45,   -45,    19,    20,    22,   -45,   -45,
+     -45
 };
 
 /* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int8 yydefgoto[] =
 {
-       0,    17,    18,    19,    20,    21,   104,   105,    22,    23,
-      71,    24,    25,    44,    33,    34,    28,    79,    80,    29
+       0,    19,    20,    21,    22,   127,    23,   109,   110,    24,
+      25,    74,    26,    27,    46,    35,    36,    30,    82,    83,
+      31
 };
 
 /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
    positive, shift that token.  If negative, reduce the rule whose
    number is the opposite.  If YYTABLE_NINF, syntax error.  */
-static const yytype_int8 yytable[] =
+static const yytype_int16 yytable[] =
 {
-      32,    35,    36,    75,    76,    47,    30,    64,    37,    40,
-      41,    31,    43,    49,    50,    51,    52,    53,    54,    26,
-      27,    84,    85,    65,    66,    67,    68,    69,    70,    47,
-      45,    46,    48,    26,    27,    78,    81,    26,    27,    38,
-      73,    77,    78,    39,   106,   103,    87,    88,    89,    90,
-      91,    92,    93,    94,    95,    96,    97,    98,    99,   100,
-     107,    26,    27,   108,   109,     7,     8,   112,   101,   102,
-       9,    54,    10,    11,   115,    51,    52,    53,    54,   114,
-     113,   119,   111,    14,    -3,     1,   118,     2,     3,    12,
-       4,   124,     5,     6,     7,     8,    13,   116,   120,     9,
-      15,    10,    11,   121,    -2,     1,   117,     2,     3,    38,
-       4,   123,     5,     6,     7,     8,    42,    72,    12,     9,
-     122,    10,    11,    86,     0,    13,     0,    14,     0,    15,
-       0,     0,     0,    16,     1,     0,     2,     3,    12,     4,
-       0,     5,     6,     7,     8,    13,     0,    14,     9,    15,
-      10,    11,     1,    16,     2,     3,     0,     4,     0,     5,
-       6,     7,     8,     0,     0,     0,     9,    12,    10,    11,
-       0,     0,     0,     0,    13,     0,    14,    83,    15,     0,
-       0,     0,    16,     0,     0,    12,     0,     0,     0,     0,
-       0,     0,    13,     0,    14,     0,    15,     0,     0,     0,
-      16,    49,    50,    51,    52,    53,    54,    55,    56,    57,
-      58,    59,    60,    61,    62,    49,    50,    51,    52,    53,
-      54,    55,    56,    57,    58,    59,    60,    61,    62,     0,
-       0,     0,     0,    63,    49,    50,    51,    52,    53,    54,
-      55,    56,    57,    58,    59,    60,    61,    74,    49,    50,
-      51,    52,    53,    54,    55,    56,    57,    58,    59,    60,
-      61,    62,    49,    50,    51,    52,    53,    54,    55,    56,
-      57,    58,    59,    60,   110,    49,    50,    51,    52,    53,
-      54,    55,    56,    57,    58,    59,    60,    61,    62,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,    14,    49,
-      50,    51,    52,    53,    54,    55,    56,    57,    58,    59,
-      60,    61,    62,     0,     0,     0,     0,     0,     0,     0,
-       0,    82,    49,    50,    51,    52,    53,    54,    55,    56,
-      57,    58,    59,    60,    61,    62,    49,    50,    51,    52,
-      53,    54,     0,     0,    57,    58,    59,    60
+      34,    37,    38,    78,    79,    50,    67,   118,    32,   133,
+      42,    43,   119,    45,   134,    87,    88,    40,    33,    28,
+      29,    41,    68,    69,    70,    71,    72,    73,    49,    50,
+      54,    55,    56,    57,    28,    29,    39,    81,    84,    28,
+      29,    52,    53,    54,    55,    56,    57,    89,    90,    92,
+      93,    94,    95,    96,    97,    98,    99,   100,   101,   102,
+     103,   104,   105,    28,    29,    52,    53,    54,    55,    56,
+      57,   106,   107,    60,    61,    62,    63,   122,    47,    48,
+      76,    51,    80,    91,   108,   116,   129,    -3,     1,   111,
+       2,     3,   112,     4,   113,     5,     6,     7,     8,   117,
+     114,   138,     9,    10,    11,    12,    57,   120,   121,    -2,
+       1,   124,     2,     3,    15,     4,   128,     5,     6,     7,
+       8,    13,   123,   130,     9,    10,    11,    12,    14,   131,
+      15,   137,    16,    40,    44,   125,    17,    18,   126,   135,
+     136,    75,     0,    13,     0,   132,     0,     0,     0,     0,
+      14,     0,    15,     0,    16,     0,     0,     0,    17,    18,
+       1,     0,     2,     3,     0,     4,     0,     5,     6,     7,
+       8,     0,     0,     0,     9,    10,    11,    12,     0,     0,
+       1,     0,     2,     3,     0,     4,     0,     5,     6,     7,
+       8,     0,     0,    13,     9,    10,    11,    12,     0,     0,
+      14,     0,    15,    86,    16,     0,     0,     0,    17,    18,
+       7,     8,     0,    13,     0,     9,    10,    11,    12,     0,
+      14,     0,    15,     0,    16,     0,     0,     0,    17,    18,
+       0,     0,     0,     0,    13,     0,     0,     0,     0,     0,
+       0,    14,     0,     0,     0,    16,     0,     0,     0,     0,
+      18,    52,    53,    54,    55,    56,    57,    58,    59,    60,
+      61,    62,    63,    64,    65,    52,    53,    54,    55,    56,
+      57,    58,    59,    60,    61,    62,    63,    64,    65,     0,
+       0,     0,     0,    66,    52,    53,    54,    55,    56,    57,
+      58,    59,    60,    61,    62,    63,    64,    77,    52,    53,
+      54,    55,    56,    57,    58,    59,    60,    61,    62,    63,
+      64,    65,    52,    53,    54,    55,    56,    57,    58,    59,
+      60,    61,    62,    63,   115,    52,    53,    54,    55,    56,
+      57,    58,    59,    60,    61,    62,    63,    64,    65,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,    15,    52,
+      53,    54,    55,    56,    57,    58,    59,    60,    61,    62,
+      63,    64,    65,     0,     0,     0,     0,     0,     0,     0,
+       0,    85,    52,    53,    54,    55,    56,    57,    58,    59,
+      60,    61,    62,    63,    64,    65
 };
 
-static const yytype_int8 yycheck[] =
+static const yytype_int16 yycheck[] =
 {
-       3,     4,     5,    35,    36,    18,    52,    19,    41,    12,
-      13,    15,    15,    20,    21,    22,    23,    24,    25,     0,
-       0,    46,    47,    35,    36,    37,    38,    39,    40,    42,
-      41,     0,    52,    14,    14,    38,    39,    18,    18,    41,
-      41,    12,    45,    45,     7,    15,    49,    50,    51,    52,
+       3,     4,     5,    37,    38,    20,    19,    42,    52,    42,
+      13,    14,    47,    16,    47,    46,    47,    41,    15,     0,
+       0,    45,    35,    36,    37,    38,    39,    40,     0,    44,
+      22,    23,    24,    25,    15,    15,    41,    40,    41,    20,
+      20,    20,    21,    22,    23,    24,    25,    15,    16,    52,
       53,    54,    55,    56,    57,    58,    59,    60,    61,    62,
-      15,    42,    42,    42,    47,    10,    11,    42,    71,    72,
-      15,    25,    17,    18,   106,    22,    23,    24,    25,    47,
-      42,   113,    85,    43,     0,     1,    52,     3,     4,    34,
-       6,   123,     8,     9,    10,    11,    41,    48,    15,    15,
-      45,    17,    18,    15,     0,     1,   109,     3,     4,    41,
-       6,    42,     8,     9,    10,    11,    14,    27,    34,    15,
-     116,    17,    18,    45,    -1,    41,    -1,    43,    -1,    45,
-      -1,    -1,    -1,    49,     1,    -1,     3,     4,    34,     6,
-      -1,     8,     9,    10,    11,    41,    -1,    43,    15,    45,
-      17,    18,     1,    49,     3,     4,    -1,     6,    -1,     8,
-       9,    10,    11,    -1,    -1,    -1,    15,    34,    17,    18,
-      -1,    -1,    -1,    -1,    41,    -1,    43,    44,    45,    -1,
-      -1,    -1,    49,    -1,    -1,    34,    -1,    -1,    -1,    -1,
-      -1,    -1,    41,    -1,    43,    -1,    45,    -1,    -1,    -1,
-      49,    20,    21,    22,    23,    24,    25,    26,    27,    28,
+      63,    64,    65,    44,    44,    20,    21,    22,    23,    24,
+      25,    74,    75,    28,    29,    30,    31,   111,    41,    41,
+      41,    52,    12,    42,    15,    88,   120,     0,     1,     7,
+       3,     4,    15,     6,    42,     8,     9,    10,    11,    42,
+      47,   135,    15,    16,    17,    18,    25,    42,    47,     0,
+       1,   114,     3,     4,    43,     6,   119,     8,     9,    10,
+      11,    34,    48,    15,    15,    16,    17,    18,    41,    15,
+      43,   134,    45,    41,    15,    52,    49,    50,    52,    42,
+      52,    29,    -1,    34,    -1,   123,    -1,    -1,    -1,    -1,
+      41,    -1,    43,    -1,    45,    -1,    -1,    -1,    49,    50,
+       1,    -1,     3,     4,    -1,     6,    -1,     8,     9,    10,
+      11,    -1,    -1,    -1,    15,    16,    17,    18,    -1,    -1,
+       1,    -1,     3,     4,    -1,     6,    -1,     8,     9,    10,
+      11,    -1,    -1,    34,    15,    16,    17,    18,    -1,    -1,
+      41,    -1,    43,    44,    45,    -1,    -1,    -1,    49,    50,
+      10,    11,    -1,    34,    -1,    15,    16,    17,    18,    -1,
+      41,    -1,    43,    -1,    45,    -1,    -1,    -1,    49,    50,
+      -1,    -1,    -1,    -1,    34,    -1,    -1,    -1,    -1,    -1,
+      -1,    41,    -1,    -1,    -1,    45,    -1,    -1,    -1,    -1,
+      50,    20,    21,    22,    23,    24,    25,    26,    27,    28,
       29,    30,    31,    32,    33,    20,    21,    22,    23,    24,
       25,    26,    27,    28,    29,    30,    31,    32,    33,    -1,
       -1,    -1,    -1,    52,    20,    21,    22,    23,    24,    25,
@@ -758,8 +780,7 @@ static const yytype_int8 yycheck[] =
       21,    22,    23,    24,    25,    26,    27,    28,    29,    30,
       31,    32,    33,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
       -1,    42,    20,    21,    22,    23,    24,    25,    26,    27,
-      28,    29,    30,    31,    32,    33,    20,    21,    22,    23,
-      24,    25,    -1,    -1,    28,    29,    30,    31
+      28,    29,    30,    31,    32,    33
 };
 
 /* YYSTOS[STATE-NUM] -- The symbol kind of the accessing symbol of
@@ -767,42 +788,45 @@ static const yytype_int8 yycheck[] =
 static const yytype_int8 yystos[] =
 {
        0,     1,     3,     4,     6,     8,     9,    10,    11,    15,
-      17,    18,    34,    41,    43,    45,    49,    54,    55,    56,
-      57,    58,    61,    62,    64,    65,    67,    68,    69,    72,
-      52,    15,    64,    67,    68,    64,    64,    41,    41,    45,
-      64,    64,    55,    64,    66,    41,     0,    56,    52,    20,
-      21,    22,    23,    24,    25,    26,    27,    28,    29,    30,
-      31,    32,    33,    52,    19,    35,    36,    37,    38,    39,
-      40,    63,    63,    41,    52,    61,    61,    12,    64,    70,
-      71,    64,    42,    44,    46,    47,    70,    64,    64,    64,
-      64,    64,    64,    64,    64,    64,    64,    64,    64,    64,
-      64,    64,    64,    15,    59,    60,     7,    15,    42,    47,
-      46,    64,    42,    42,    47,    61,    48,    64,    52,    61,
-      15,    15,    69,    42,    61
+      16,    17,    18,    34,    41,    43,    45,    49,    50,    54,
+      55,    56,    57,    59,    62,    63,    65,    66,    68,    69,
+      70,    73,    52,    15,    65,    68,    69,    65,    65,    41,
+      41,    45,    65,    65,    55,    65,    67,    41,    41,     0,
+      56,    52,    20,    21,    22,    23,    24,    25,    26,    27,
+      28,    29,    30,    31,    32,    33,    52,    19,    35,    36,
+      37,    38,    39,    40,    64,    64,    41,    52,    62,    62,
+      12,    65,    71,    72,    65,    42,    44,    46,    47,    15,
+      16,    42,    65,    65,    65,    65,    65,    65,    65,    65,
+      65,    65,    65,    65,    65,    65,    65,    65,    15,    60,
+      61,     7,    15,    42,    47,    46,    65,    42,    42,    47,
+      42,    47,    62,    48,    65,    52,    52,    58,    65,    62,
+      15,    15,    70,    42,    47,    42,    52,    65,    62
 };
 
 /* YYR1[RULE-NUM] -- Symbol kind of the left-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr1[] =
 {
        0,    53,    54,    54,    55,    55,    56,    56,    56,    56,
-      56,    56,    56,    56,    57,    58,    59,    59,    60,    60,
-      61,    62,    62,    63,    63,    63,    63,    63,    63,    63,
-      64,    64,    64,    64,    64,    64,    64,    64,    64,    64,
-      64,    64,    64,    64,    64,    64,    64,    64,    64,    64,
-      64,    64,    64,    64,    65,    66,    66,    67,    68,    69,
-      70,    70,    71,    71,    72,    72,    72,    72
+      56,    56,    56,    56,    57,    57,    57,    58,    58,    59,
+      60,    60,    61,    61,    62,    63,    63,    64,    64,    64,
+      64,    64,    64,    64,    65,    65,    65,    65,    65,    65,
+      65,    65,    65,    65,    65,    65,    65,    65,    65,    65,
+      65,    65,    65,    65,    65,    65,    65,    65,    65,    65,
+      66,    67,    67,    68,    69,    70,    71,    71,    72,    72,
+      73,    73,    73,    73
 };
 
 /* YYR2[RULE-NUM] -- Number of symbols on the right-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr2[] =
 {
        0,     2,     1,     0,     1,     2,     1,     2,     2,     1,
-       3,     1,     1,     2,     5,     6,     0,     1,     1,     3,
-       3,     3,     3,     1,     1,     1,     1,     1,     1,     1,
-       1,     1,     1,     1,     1,     1,     1,     1,     3,     3,
-       3,     3,     3,     3,     3,     3,     3,     3,     3,     3,
-       3,     3,     2,     3,     3,     1,     3,     1,     4,     4,
-       0,     1,     1,     3,     3,     5,     3,     8
+       3,     1,     1,     2,     7,     5,     5,     1,     3,     6,
+       0,     1,     1,     3,     3,     3,     3,     1,     1,     1,
+       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
+       1,     1,     1,     3,     3,     3,     3,     3,     3,     3,
+       3,     3,     3,     3,     3,     3,     3,     3,     2,     3,
+       3,     1,     3,     1,     4,     4,     0,     1,     1,     3,
+       3,     5,     3,     8
 };
 
 
@@ -1265,182 +1289,389 @@ yyreduce:
   YY_REDUCE_PRINT (yyn);
   switch (yyn)
     {
-  case 8: /* statement: expression ';'  */
-#line 68 "parser_g2dl.y"
-                        { printf("Resultado da expressão: %f\n", (yyvsp[-1].floatVal)); }
-#line 1272 "parser_g2dl.tab.c"
-    break;
-
   case 10: /* statement: RETURN expression ';'  */
-#line 70 "parser_g2dl.y"
-                            { printf("Retornando valor %f\n", (yyvsp[-1].floatVal)); }
-#line 1278 "parser_g2dl.tab.c"
+#line 81 "parser_g2dl.y"
+                            { printf("Retornando valor (tipo %d): ", (yyvsp[-1].runtimeVal).type);
+                                 if ((yyvsp[-1].runtimeVal).type == TYPE_INT) printf("%d\n", (yyvsp[-1].runtimeVal).data.intVal);
+                                 else if ((yyvsp[-1].runtimeVal).type == TYPE_FLOAT) printf("%f\n", (yyvsp[-1].runtimeVal).data.floatVal);
+                                 else if ((yyvsp[-1].runtimeVal).type == TYPE_STRING) printf("%s\n", (yyvsp[-1].runtimeVal).data.strVal);
+                                 if ((yyvsp[-1].runtimeVal).type == TYPE_STRING && (yyvsp[-1].runtimeVal).data.strVal) free((yyvsp[-1].runtimeVal).data.strVal);
+                               }
+#line 1301 "parser_g2dl.tab.c"
     break;
 
   case 13: /* statement: error ';'  */
-#line 73 "parser_g2dl.y"
+#line 89 "parser_g2dl.y"
                 { fprintf(stderr, "Erro de sintaxe na linha %d. Tentando recuperar em ';'\n", yylineno); yyerrok; }
-#line 1284 "parser_g2dl.tab.c"
+#line 1307 "parser_g2dl.tab.c"
     break;
 
-  case 21: /* assignment: variable assignment_operator expression  */
-#line 99 "parser_g2dl.y"
-                                            { printf("Atribuição para a variável %s\n", (yyvsp[-2].strVal)); free((yyvsp[-2].strVal)); }
-#line 1290 "parser_g2dl.tab.c"
+  case 14: /* printf_statement: PRINTF LEFT_PARENTHESIS STRING_LITERAL COMMA argument_list_printf RIGHT_PARENTHESIS ';'  */
+#line 94 "parser_g2dl.y"
+    {
+        my_printf_runtime((yyvsp[-4].strVal), (yyvsp[-2].argList));
+        free((yyvsp[-4].strVal));
+        free_argument_list((yyvsp[-2].argList));
+    }
+#line 1317 "parser_g2dl.tab.c"
     break;
 
-  case 30: /* expression: INTEGER  */
-#line 114 "parser_g2dl.y"
-                                { (yyval.floatVal) = (float)(yyvsp[0].intVal); }
-#line 1296 "parser_g2dl.tab.c"
-    break;
-
-  case 31: /* expression: FLOAT_LITERAL  */
-#line 115 "parser_g2dl.y"
-                                { (yyval.floatVal) = (yyvsp[0].floatVal); }
-#line 1302 "parser_g2dl.tab.c"
-    break;
-
-  case 32: /* expression: variable  */
-#line 116 "parser_g2dl.y"
-                                { printf("Usando variável %s\n", (yyvsp[0].strVal)); free((yyvsp[0].strVal)); (yyval.floatVal) = 0.0; }
-#line 1308 "parser_g2dl.tab.c"
-    break;
-
-  case 33: /* expression: function_call  */
-#line 117 "parser_g2dl.y"
-                                { (yyval.floatVal) = 0.0; }
-#line 1314 "parser_g2dl.tab.c"
-    break;
-
-  case 34: /* expression: array_access  */
-#line 118 "parser_g2dl.y"
-                                { (yyval.floatVal) = 0.0; }
-#line 1320 "parser_g2dl.tab.c"
-    break;
-
-  case 35: /* expression: array_literal  */
-#line 119 "parser_g2dl.y"
-                                { (yyval.floatVal) = 0.0; }
+  case 15: /* printf_statement: PRINTF LEFT_PARENTHESIS STRING_LITERAL RIGHT_PARENTHESIS ';'  */
+#line 100 "parser_g2dl.y"
+    {
+        my_printf_runtime((yyvsp[-2].strVal), NULL);
+        free((yyvsp[-2].strVal));
+    }
 #line 1326 "parser_g2dl.tab.c"
     break;
 
-  case 36: /* expression: TRUE  */
-#line 120 "parser_g2dl.y"
-                                { (yyval.floatVal) = 1.0; }
-#line 1332 "parser_g2dl.tab.c"
+  case 16: /* printf_statement: PRINTF LEFT_PARENTHESIS ID RIGHT_PARENTHESIS ';'  */
+#line 105 "parser_g2dl.y"
+    {
+
+        Symbol *sym = lookup_symbol((yyvsp[-2].strVal)); // Busca o valor do ID na tabela de símbolos
+
+        if (sym != NULL) {
+            char *temp_format = NULL;
+            ArgumentNode *arg_list_temp = NULL;
+
+            arg_list_temp = (ArgumentNode*) malloc(sizeof(ArgumentNode));
+            if (!arg_list_temp) {
+                perror("Erro ao alocar ArgumentNode para printf(ID)");
+                exit(EXIT_FAILURE);
+            }
+            arg_list_temp->value = sym->value; // Usa o valor REAL do símbolo
+            arg_list_temp->next = NULL;
+
+            if (arg_list_temp->value.type == TYPE_STRING && arg_list_temp->value.data.strVal != NULL) {
+                arg_list_temp->value.data.strVal = strdup(arg_list_temp->value.data.strVal);
+            }
+
+            if (sym->value.type == TYPE_INT) {
+                temp_format = strdup("%d\n");
+            } else if (sym->value.type == TYPE_FLOAT) {
+                temp_format = strdup("%f\n");
+            } else if (sym->value.type == TYPE_STRING) {
+                temp_format = strdup("%s\n");
+            } else {
+                fprintf(stderr, "Erro de runtime: printf(ID) com tipo de variável não suportado.\n");
+                temp_format = strdup("Tipo desconhecido para ID.\n");
+            }
+
+            if (temp_format) {
+                my_printf_runtime(temp_format, arg_list_temp);
+                free(temp_format);
+            }
+            free_argument_list(arg_list_temp); // Libera o nó temporário e sua string duplicada, se houver
+        } else {
+            fprintf(stderr, "Erro de runtime: Variável '%s' não definida na linha %d para printf.\n", (yyvsp[-2].strVal), yylineno);
+            yyerror("Variável não definida em printf()");
+        }
+        free((yyvsp[-2].strVal)); // Libera o ID string duplicado pelo lexer
+    }
+#line 1373 "parser_g2dl.tab.c"
     break;
 
-  case 37: /* expression: FALSE  */
-#line 121 "parser_g2dl.y"
-                                { (yyval.floatVal) = 0.0; }
-#line 1338 "parser_g2dl.tab.c"
-    break;
-
-  case 38: /* expression: expression PLUS expression  */
-#line 122 "parser_g2dl.y"
-                                        { (yyval.floatVal) = (yyvsp[-2].floatVal) + (yyvsp[0].floatVal); }
-#line 1344 "parser_g2dl.tab.c"
-    break;
-
-  case 39: /* expression: expression MINUS expression  */
-#line 123 "parser_g2dl.y"
-                                        { (yyval.floatVal) = (yyvsp[-2].floatVal) - (yyvsp[0].floatVal); }
-#line 1350 "parser_g2dl.tab.c"
-    break;
-
-  case 40: /* expression: expression MULTIPLY expression  */
-#line 124 "parser_g2dl.y"
-                                        { (yyval.floatVal) = (yyvsp[-2].floatVal) * (yyvsp[0].floatVal); }
-#line 1356 "parser_g2dl.tab.c"
-    break;
-
-  case 41: /* expression: expression DIVIDE expression  */
-#line 125 "parser_g2dl.y"
-                                        { if((yyvsp[0].floatVal) != 0) (yyval.floatVal) = (yyvsp[-2].floatVal) / (yyvsp[0].floatVal); else yyerror("Divisão por zero"); }
-#line 1362 "parser_g2dl.tab.c"
-    break;
-
-  case 42: /* expression: expression MOD expression  */
-#line 126 "parser_g2dl.y"
-                                        { (yyval.floatVal) = (float)((int)(yyvsp[-2].floatVal) % (int)(yyvsp[0].floatVal)); }
-#line 1368 "parser_g2dl.tab.c"
-    break;
-
-  case 43: /* expression: expression POWER expression  */
-#line 127 "parser_g2dl.y"
-                                        { (yyval.floatVal) = pow((yyvsp[-2].floatVal), (yyvsp[0].floatVal)); }
-#line 1374 "parser_g2dl.tab.c"
-    break;
-
-  case 44: /* expression: expression EQUAL expression  */
-#line 128 "parser_g2dl.y"
-                                        { (yyval.floatVal) = ((yyvsp[-2].floatVal) == (yyvsp[0].floatVal)); }
-#line 1380 "parser_g2dl.tab.c"
-    break;
-
-  case 45: /* expression: expression NOT_EQUAL expression  */
-#line 129 "parser_g2dl.y"
-                                        { (yyval.floatVal) = ((yyvsp[-2].floatVal) != (yyvsp[0].floatVal)); }
-#line 1386 "parser_g2dl.tab.c"
-    break;
-
-  case 46: /* expression: expression LESS_THAN expression  */
-#line 130 "parser_g2dl.y"
-                                        { (yyval.floatVal) = ((yyvsp[-2].floatVal) < (yyvsp[0].floatVal)); }
-#line 1392 "parser_g2dl.tab.c"
-    break;
-
-  case 47: /* expression: expression GREATER_THAN expression  */
-#line 131 "parser_g2dl.y"
-                                         { (yyval.floatVal) = ((yyvsp[-2].floatVal) > (yyvsp[0].floatVal)); }
-#line 1398 "parser_g2dl.tab.c"
-    break;
-
-  case 48: /* expression: expression LESS_THAN_OR_EQUAL expression  */
-#line 132 "parser_g2dl.y"
-                                               { (yyval.floatVal) = ((yyvsp[-2].floatVal) <= (yyvsp[0].floatVal)); }
-#line 1404 "parser_g2dl.tab.c"
-    break;
-
-  case 49: /* expression: expression GREATER_THAN_OR_EQUAL expression  */
-#line 133 "parser_g2dl.y"
-                                                  { (yyval.floatVal) = ((yyvsp[-2].floatVal) >= (yyvsp[0].floatVal)); }
-#line 1410 "parser_g2dl.tab.c"
-    break;
-
-  case 50: /* expression: expression AND expression  */
-#line 134 "parser_g2dl.y"
-                                        { (yyval.floatVal) = ((yyvsp[-2].floatVal) && (yyvsp[0].floatVal)); }
-#line 1416 "parser_g2dl.tab.c"
-    break;
-
-  case 51: /* expression: expression OR expression  */
-#line 135 "parser_g2dl.y"
-                                        { (yyval.floatVal) = ((yyvsp[-2].floatVal) || (yyvsp[0].floatVal)); }
-#line 1422 "parser_g2dl.tab.c"
-    break;
-
-  case 52: /* expression: NOT expression  */
-#line 136 "parser_g2dl.y"
-                                        { (yyval.floatVal) = !(yyvsp[0].floatVal); }
-#line 1428 "parser_g2dl.tab.c"
-    break;
-
-  case 53: /* expression: LEFT_PARENTHESIS expression RIGHT_PARENTHESIS  */
-#line 137 "parser_g2dl.y"
-                                                    { (yyval.floatVal) = (yyvsp[-1].floatVal); }
-#line 1434 "parser_g2dl.tab.c"
-    break;
-
-  case 57: /* variable: ID  */
+  case 17: /* argument_list_printf: expression  */
 #line 150 "parser_g2dl.y"
+               { (yyval.argList) = (ArgumentNode *)malloc(sizeof(ArgumentNode));
+                 if (!(yyval.argList)) { perror("malloc"); exit(EXIT_FAILURE); }
+                 (yyval.argList)->value = (yyvsp[0].runtimeVal);
+                 (yyval.argList)->next = NULL;
+               }
+#line 1383 "parser_g2dl.tab.c"
+    break;
+
+  case 18: /* argument_list_printf: argument_list_printf COMMA expression  */
+#line 155 "parser_g2dl.y"
+                                            {
+                     ArgumentNode *newNode = (ArgumentNode *)malloc(sizeof(ArgumentNode));
+                     if (!newNode) { perror("malloc"); exit(EXIT_FAILURE); }
+                     newNode->value = (yyvsp[0].runtimeVal);
+                     newNode->next = NULL;
+                     ArgumentNode *current = (yyvsp[-2].argList);
+                     while (current->next != NULL) {
+                         current = current->next;
+                     }
+                     current->next = newNode;
+                     (yyval.argList) = (yyvsp[-2].argList);
+                   }
+#line 1400 "parser_g2dl.tab.c"
+    break;
+
+  case 25: /* assignment: variable assignment_operator expression  */
+#line 188 "parser_g2dl.y"
+                                            {
+        printf("Atribuição para a variável %s. Valor: ", (yyvsp[-2].strVal));
+        if ((yyvsp[0].runtimeVal).type == TYPE_INT) printf("%d\n", (yyvsp[0].runtimeVal).data.intVal);
+        else if ((yyvsp[0].runtimeVal).type == TYPE_FLOAT) printf("%f\n", (yyvsp[0].runtimeVal).data.floatVal);
+        else if ((yyvsp[0].runtimeVal).type == TYPE_STRING) printf("%s\n", (yyvsp[0].runtimeVal).data.strVal);
+        printf("\n");
+
+        // Usa a função da tabela hash
+        insert_symbol((yyvsp[-2].strVal), (yyvsp[0].runtimeVal)); // Insere o nome e o valor
+
+        free((yyvsp[-2].strVal)); // Libera o nome da variável (strdup pelo lexer)
+    }
+#line 1417 "parser_g2dl.tab.c"
+    break;
+
+  case 34: /* expression: INTEGER  */
+#line 214 "parser_g2dl.y"
+                                { (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_INT, .data.intVal = (yyvsp[0].intVal)}; }
+#line 1423 "parser_g2dl.tab.c"
+    break;
+
+  case 35: /* expression: FLOAT_LITERAL  */
+#line 215 "parser_g2dl.y"
+                                { (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = (yyvsp[0].floatVal)}; }
+#line 1429 "parser_g2dl.tab.c"
+    break;
+
+  case 36: /* expression: STRING_LITERAL  */
+#line 216 "parser_g2dl.y"
+                                { (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_STRING, .data.strVal = (yyvsp[0].strVal)}; }
+#line 1435 "parser_g2dl.tab.c"
+    break;
+
+  case 37: /* expression: variable  */
+#line 217 "parser_g2dl.y"
+                                {
+        printf("Usando variável %s\n", (yyvsp[0].strVal));
+        Symbol *sym = lookup_symbol((yyvsp[0].strVal)); // Busca o símbolo na tabela hash
+        if (sym != NULL) {
+            (yyval.runtimeVal) = sym->value;
+            // Se o valor retornado for uma string, e você precisar que a expressão retorne uma *nova cópia*
+            // para evitar que o free subsequente do símbolo afete a expressão, faça um strdup aqui.
+            // Para inteiros e floats, a cópia por valor é suficiente.
+            if ((yyval.runtimeVal).type == TYPE_STRING && (yyval.runtimeVal).data.strVal != NULL) {
+                (yyval.runtimeVal).data.strVal = strdup((yyval.runtimeVal).data.strVal);
+            }
+        } else {
+            fprintf(stderr, "Erro de runtime: Variável '%s' não definida na linha %d.\n", (yyvsp[0].strVal), yylineno);
+            yyerror("Variável não definida");
+            (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_INT, .data.intVal = 0}; // Valor padrão para erro
+        }
+        free((yyvsp[0].strVal)); // Libera o nome da variável (strdup pelo lexer)
+    }
+#line 1458 "parser_g2dl.tab.c"
+    break;
+
+  case 38: /* expression: function_call  */
+#line 235 "parser_g2dl.y"
+                                { (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = 0.0}; }
+#line 1464 "parser_g2dl.tab.c"
+    break;
+
+  case 39: /* expression: array_access  */
+#line 236 "parser_g2dl.y"
+                                { (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = 0.0}; }
+#line 1470 "parser_g2dl.tab.c"
+    break;
+
+  case 40: /* expression: array_literal  */
+#line 237 "parser_g2dl.y"
+                                { (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = 0.0}; }
+#line 1476 "parser_g2dl.tab.c"
+    break;
+
+  case 41: /* expression: TRUE  */
+#line 238 "parser_g2dl.y"
+                                { (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_INT, .data.intVal = 1}; }
+#line 1482 "parser_g2dl.tab.c"
+    break;
+
+  case 42: /* expression: FALSE  */
+#line 239 "parser_g2dl.y"
+                                { (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_INT, .data.intVal = 0}; }
+#line 1488 "parser_g2dl.tab.c"
+    break;
+
+  case 43: /* expression: INPUT LEFT_PARENTHESIS RIGHT_PARENTHESIS  */
+#line 240 "parser_g2dl.y"
+                                               { // <-- ADICIONE ESTA REGRA
+        printf("Chamada de input(). Aguardando entrada...\n");
+        (yyval.runtimeVal) = runtime_input(); // Chama a função de runtime para ler a entrada
+    }
+#line 1497 "parser_g2dl.tab.c"
+    break;
+
+  case 44: /* expression: expression PLUS expression  */
+#line 244 "parser_g2dl.y"
+                                          {
+        // Exemplo de coerção para float para a operação de soma
+        float val1 = ((yyvsp[-2].runtimeVal).type == TYPE_INT) ? (float)(yyvsp[-2].runtimeVal).data.intVal : (yyvsp[-2].runtimeVal).data.floatVal;
+        float val2 = ((yyvsp[0].runtimeVal).type == TYPE_INT) ? (float)(yyvsp[0].runtimeVal).data.intVal : (yyvsp[0].runtimeVal).data.floatVal;
+        (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = val1 + val2};
+    }
+#line 1508 "parser_g2dl.tab.c"
+    break;
+
+  case 45: /* expression: expression MINUS expression  */
+#line 250 "parser_g2dl.y"
+                                          {
+        float val1 = ((yyvsp[-2].runtimeVal).type == TYPE_INT) ? (float)(yyvsp[-2].runtimeVal).data.intVal : (yyvsp[-2].runtimeVal).data.floatVal;
+        float val2 = ((yyvsp[0].runtimeVal).type == TYPE_INT) ? (float)(yyvsp[0].runtimeVal).data.intVal : (yyvsp[0].runtimeVal).data.floatVal;
+        (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = val1 - val2};
+    }
+#line 1518 "parser_g2dl.tab.c"
+    break;
+
+  case 46: /* expression: expression MULTIPLY expression  */
+#line 255 "parser_g2dl.y"
+                                          {
+        float val1 = ((yyvsp[-2].runtimeVal).type == TYPE_INT) ? (float)(yyvsp[-2].runtimeVal).data.intVal : (yyvsp[-2].runtimeVal).data.floatVal;
+        float val2 = ((yyvsp[0].runtimeVal).type == TYPE_INT) ? (float)(yyvsp[0].runtimeVal).data.intVal : (yyvsp[0].runtimeVal).data.floatVal;
+        (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = val1 * val2};
+    }
+#line 1528 "parser_g2dl.tab.c"
+    break;
+
+  case 47: /* expression: expression DIVIDE expression  */
+#line 260 "parser_g2dl.y"
+                                          {
+        float val1 = ((yyvsp[-2].runtimeVal).type == TYPE_INT) ? (float)(yyvsp[-2].runtimeVal).data.intVal : (yyvsp[-2].runtimeVal).data.floatVal;
+        float val2 = ((yyvsp[0].runtimeVal).type == TYPE_INT) ? (float)(yyvsp[0].runtimeVal).data.intVal : (yyvsp[0].runtimeVal).data.floatVal;
+        if(val2 != 0) (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = val1 / val2};
+        else { yyerror("Divisão por zero"); (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = 0.0}; }
+    }
+#line 1539 "parser_g2dl.tab.c"
+    break;
+
+  case 48: /* expression: expression MOD expression  */
+#line 266 "parser_g2dl.y"
+                                          {
+        // Modulo geralmente é para inteiros, então coerção para int aqui
+        int val1 = ((yyvsp[-2].runtimeVal).type == TYPE_FLOAT) ? (int)(yyvsp[-2].runtimeVal).data.floatVal : (yyvsp[-2].runtimeVal).data.intVal;
+        int val2 = ((yyvsp[0].runtimeVal).type == TYPE_FLOAT) ? (int)(yyvsp[0].runtimeVal).data.floatVal : (yyvsp[0].runtimeVal).data.intVal;
+        if(val2 != 0) (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_INT, .data.intVal = val1 % val2};
+        else { yyerror("Modulo por zero"); (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_INT, .data.intVal = 0}; }
+    }
+#line 1551 "parser_g2dl.tab.c"
+    break;
+
+  case 49: /* expression: expression POWER expression  */
+#line 273 "parser_g2dl.y"
+                                          {
+        float val1 = ((yyvsp[-2].runtimeVal).type == TYPE_INT) ? (float)(yyvsp[-2].runtimeVal).data.intVal : (yyvsp[-2].runtimeVal).data.floatVal;
+        float val2 = ((yyvsp[0].runtimeVal).type == TYPE_INT) ? (float)(yyvsp[0].runtimeVal).data.intVal : (yyvsp[0].runtimeVal).data.floatVal;
+        (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = pow(val1, val2)};
+    }
+#line 1561 "parser_g2dl.tab.c"
+    break;
+
+  case 50: /* expression: expression EQUAL expression  */
+#line 279 "parser_g2dl.y"
+                                          {
+        // Simplificado: compara como floats se algum for float, senão como ints
+        if ((yyvsp[-2].runtimeVal).type == TYPE_FLOAT || (yyvsp[0].runtimeVal).type == TYPE_FLOAT) {
+            float val1 = ((yyvsp[-2].runtimeVal).type == TYPE_INT) ? (float)(yyvsp[-2].runtimeVal).data.intVal : (yyvsp[-2].runtimeVal).data.floatVal;
+            float val2 = ((yyvsp[0].runtimeVal).type == TYPE_INT) ? (float)(yyvsp[0].runtimeVal).data.intVal : (yyvsp[0].runtimeVal).data.floatVal;
+            (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_INT, .data.intVal = (val1 == val2)};
+        } else {
+            (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_INT, .data.intVal = ((yyvsp[-2].runtimeVal).data.intVal == (yyvsp[0].runtimeVal).data.intVal)};
+        }
+    }
+#line 1576 "parser_g2dl.tab.c"
+    break;
+
+  case 51: /* expression: expression NOT_EQUAL expression  */
+#line 289 "parser_g2dl.y"
+                                          {
+        if ((yyvsp[-2].runtimeVal).type == TYPE_FLOAT || (yyvsp[0].runtimeVal).type == TYPE_FLOAT) {
+            float val1 = ((yyvsp[-2].runtimeVal).type == TYPE_INT) ? (float)(yyvsp[-2].runtimeVal).data.intVal : (yyvsp[-2].runtimeVal).data.floatVal;
+            float val2 = ((yyvsp[0].runtimeVal).type == TYPE_INT) ? (float)(yyvsp[0].runtimeVal).data.intVal : (yyvsp[0].runtimeVal).data.floatVal;
+            (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_INT, .data.intVal = (val1 != val2)};
+        } else {
+            (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_INT, .data.intVal = ((yyvsp[-2].runtimeVal).data.intVal != (yyvsp[0].runtimeVal).data.intVal)};
+        }
+    }
+#line 1590 "parser_g2dl.tab.c"
+    break;
+
+  case 52: /* expression: expression LESS_THAN expression  */
+#line 298 "parser_g2dl.y"
+                                          {
+        float val1 = ((yyvsp[-2].runtimeVal).type == TYPE_INT) ? (float)(yyvsp[-2].runtimeVal).data.intVal : (yyvsp[-2].runtimeVal).data.floatVal;
+        float val2 = ((yyvsp[0].runtimeVal).type == TYPE_INT) ? (float)(yyvsp[0].runtimeVal).data.intVal : (yyvsp[0].runtimeVal).data.floatVal;
+        (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_INT, .data.intVal = (val1 < val2)};
+    }
+#line 1600 "parser_g2dl.tab.c"
+    break;
+
+  case 53: /* expression: expression GREATER_THAN expression  */
+#line 303 "parser_g2dl.y"
+                                          {
+        float val1 = ((yyvsp[-2].runtimeVal).type == TYPE_INT) ? (float)(yyvsp[-2].runtimeVal).data.intVal : (yyvsp[-2].runtimeVal).data.floatVal;
+        float val2 = ((yyvsp[0].runtimeVal).type == TYPE_INT) ? (float)(yyvsp[0].runtimeVal).data.intVal : (yyvsp[0].runtimeVal).data.floatVal;
+        (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_INT, .data.intVal = (val1 > val2)};
+    }
+#line 1610 "parser_g2dl.tab.c"
+    break;
+
+  case 54: /* expression: expression LESS_THAN_OR_EQUAL expression  */
+#line 308 "parser_g2dl.y"
+                                               {
+        float val1 = ((yyvsp[-2].runtimeVal).type == TYPE_INT) ? (float)(yyvsp[-2].runtimeVal).data.intVal : (yyvsp[-2].runtimeVal).data.floatVal;
+        float val2 = ((yyvsp[0].runtimeVal).type == TYPE_INT) ? (float)(yyvsp[0].runtimeVal).data.intVal : (yyvsp[0].runtimeVal).data.floatVal;
+        (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_INT, .data.intVal = (val1 <= val2)};
+    }
+#line 1620 "parser_g2dl.tab.c"
+    break;
+
+  case 55: /* expression: expression GREATER_THAN_OR_EQUAL expression  */
+#line 313 "parser_g2dl.y"
+                                                  {
+        float val1 = ((yyvsp[-2].runtimeVal).type == TYPE_INT) ? (float)(yyvsp[-2].runtimeVal).data.intVal : (yyvsp[-2].runtimeVal).data.floatVal;
+        float val2 = ((yyvsp[0].runtimeVal).type == TYPE_INT) ? (float)(yyvsp[0].runtimeVal).data.intVal : (yyvsp[0].runtimeVal).data.floatVal;
+        (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_INT, .data.intVal = (val1 >= val2)};
+    }
+#line 1630 "parser_g2dl.tab.c"
+    break;
+
+  case 56: /* expression: expression AND expression  */
+#line 318 "parser_g2dl.y"
+                                          {
+        int val1 = ((yyvsp[-2].runtimeVal).type == TYPE_FLOAT) ? (int)(yyvsp[-2].runtimeVal).data.floatVal : (yyvsp[-2].runtimeVal).data.intVal;
+        int val2 = ((yyvsp[0].runtimeVal).type == TYPE_FLOAT) ? (int)(yyvsp[0].runtimeVal).data.floatVal : (yyvsp[0].runtimeVal).data.intVal;
+        (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_INT, .data.intVal = (val1 && val2)};
+    }
+#line 1640 "parser_g2dl.tab.c"
+    break;
+
+  case 57: /* expression: expression OR expression  */
+#line 323 "parser_g2dl.y"
+                                          {
+        int val1 = ((yyvsp[-2].runtimeVal).type == TYPE_FLOAT) ? (int)(yyvsp[-2].runtimeVal).data.floatVal : (yyvsp[-2].runtimeVal).data.intVal;
+        int val2 = ((yyvsp[0].runtimeVal).type == TYPE_FLOAT) ? (int)(yyvsp[0].runtimeVal).data.floatVal : (yyvsp[0].runtimeVal).data.intVal;
+        (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_INT, .data.intVal = (val1 || val2)};
+    }
+#line 1650 "parser_g2dl.tab.c"
+    break;
+
+  case 58: /* expression: NOT expression  */
+#line 328 "parser_g2dl.y"
+                                          {
+        int val2 = ((yyvsp[0].runtimeVal).type == TYPE_FLOAT) ? (int)(yyvsp[0].runtimeVal).data.floatVal : (yyvsp[0].runtimeVal).data.intVal;
+        (yyval.runtimeVal) = (RuntimeValue){.type = TYPE_INT, .data.intVal = !val2};
+    }
+#line 1659 "parser_g2dl.tab.c"
+    break;
+
+  case 59: /* expression: LEFT_PARENTHESIS expression RIGHT_PARENTHESIS  */
+#line 332 "parser_g2dl.y"
+                                                    { (yyval.runtimeVal) = (yyvsp[-1].runtimeVal); }
+#line 1665 "parser_g2dl.tab.c"
+    break;
+
+  case 63: /* variable: ID  */
+#line 346 "parser_g2dl.y"
        { (yyval.strVal) = (yyvsp[0].strVal); }
-#line 1440 "parser_g2dl.tab.c"
+#line 1671 "parser_g2dl.tab.c"
     break;
 
 
-#line 1444 "parser_g2dl.tab.c"
+#line 1675 "parser_g2dl.tab.c"
 
       default: break;
     }
@@ -1633,17 +1864,163 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 182 "parser_g2dl.y"
+#line 374 "parser_g2dl.y"
 
 
 void yyerror(const char *msg) {
     fprintf(stderr, "Erro na linha %d: %s\n", yylineno, msg);
 }
 
+void my_printf_runtime(char *format_string, ArgumentNode *args_list) {
+    char *p = format_string;
+    ArgumentNode *current_arg = args_list;
+
+    // A string literal em C inclui as aspas, mas a sua lógica de printf as remove.
+    // Ajuste para ignorar as aspas iniciais/finais se a string veio delas.
+    if (p[0] == '"' || p[0] == '\'') {
+        p++;
+    }
+    // Encontrar o final real da string, desconsiderando a aspa final se presente
+    size_t len = strlen(format_string);
+    char *end_p = format_string + len;
+    if (len > 0 && (*(end_p - 1) == '"' || *(end_p - 1) == '\'')) {
+        end_p--; // Aponta para o caractere antes da aspa final
+    }
+
+
+    while (p < end_p && *p != '\0') { // Loop até o final da string real, sem a aspa final
+        if (*p == '%' && *(p+1) != '\0') {
+            p++; // Avança para o especificador de formato
+
+            // O caso '%' literal não deve consumir um argumento
+            if (*p == '%') {
+                printf("%%");
+                p++; // Avança para o próximo caractere
+                continue; // Pula para a próxima iteração do loop
+            }
+
+            if (current_arg == NULL) {
+                fprintf(stderr, "Erro de runtime: Número insuficiente de argumentos para printf.\n");
+                break;
+            }
+
+            switch (*p) {
+                case 'd':
+                    if (current_arg->value.type == TYPE_INT) {
+                        printf("%d", current_arg->value.data.intVal);
+                    } else if (current_arg->value.type == TYPE_FLOAT) {
+                        printf("%d", (int)current_arg->value.data.floatVal);
+                    } else {
+                        fprintf(stderr, "Erro de runtime: tipo inesperado para %%d (esperado INT/FLOAT, recebido %d).\n", current_arg->value.type);
+                        printf("[TIPO_ERRADO]");
+                    }
+                    break;
+                case 'f':
+                    if (current_arg->value.type == TYPE_FLOAT) {
+                        printf("%f", current_arg->value.data.floatVal);
+                    } else if (current_arg->value.type == TYPE_INT) {
+                        printf("%f", (float)current_arg->value.data.intVal);
+                    }
+                    else {
+                        fprintf(stderr, "Erro de runtime: tipo inesperado para %%f (esperado FLOAT/INT, recebido %d).\n", current_arg->value.type);
+                        printf("[TIPO_ERRADO]");
+                    }
+                    break;
+                case 's':
+                    if (current_arg->value.type == TYPE_STRING) {
+                        char *temp_str = strdup(current_arg->value.data.strVal);
+                        if (temp_str) {
+                            // Ajusta o strdup para remover as aspas se existirem
+                            if (strlen(temp_str) >= 2 && (temp_str[0] == '"' || temp_str[0] == '\'') && (temp_str[strlen(temp_str)-1] == '"' || temp_str[strlen(temp_str)-1] == '\'')) {
+                                memmove(temp_str, temp_str + 1, strlen(temp_str) - 2);
+                                temp_str[strlen(temp_str) - 2] = '\0';
+                            }
+                            printf("%s", temp_str);
+                            free(temp_str);
+                        } else {
+                            printf("[ERRO_STRING]");
+                        }
+                    } else {
+                        fprintf(stderr, "Erro de runtime: tipo inesperado para %%s (esperado STRING, recebido %d).\n", current_arg->value.type);
+                        printf("[TIPO_ERRADO]");
+                    }
+                    break;
+                default:
+                    fprintf(stderr, "Aviso de runtime: Especificador de formato desconhecido: %c\n", *p);
+                    printf("%%%c", *p); // Imprime o '%' e o caractere desconhecido
+                    break;
+            }
+            current_arg = current_arg->next; // Avança para o próximo argumento
+        } else if (*p == '\\' && *(p+1) != '\0') {
+            p++;
+            switch (*p) {
+                case 'n': printf("\n"); break;
+                case 't': printf("\t"); break;
+                case '\\': printf("\\"); break;
+                case '"': printf("\""); break;
+                case '\'': printf("\'"); break;
+                default: printf("\\%c", *p); break;
+            }
+        }
+        else {
+            printf("%c", *p);
+        }
+        p++; // Avança para o próximo caractere na string de formato
+    }
+
+    if (current_arg != NULL) {
+        fprintf(stderr, "Aviso de runtime: Argumentos extras fornecidos para printf.\n");
+    }
+}
+
+
+void free_argument_list(ArgumentNode *list) {
+    ArgumentNode *temp;
+    while (list != NULL) {
+        temp = list;
+        if (temp->value.type == TYPE_STRING && temp->value.data.strVal) {
+            free(temp->value.data.strVal);
+        }
+        list = list->next;
+        free(temp);
+    }
+}
+
+RuntimeValue runtime_input() {
+    char buffer[256];
+    printf("> ");
+    if (fgets(buffer, sizeof(buffer), stdin) != NULL) {
+        buffer[strcspn(buffer, "\n")] = 0;
+
+        char *endptr;
+
+        // Tenta ler como inteiro
+        long int_candidate = strtol(buffer, &endptr, 10);
+        if (*endptr == '\0' && endptr != buffer) {
+            return (RuntimeValue){.type = TYPE_INT, .data.intVal = (int)int_candidate};
+        }
+
+        // Se não foi inteiro, tenta ler como float
+        // Declare float_candidate aqui
+        float float_candidate = strtof(buffer, &endptr); // <-- DECLARE AQUI
+        if (*endptr == '\0' && endptr != buffer) {
+            return (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = float_candidate};
+        }
+
+        // Se não foi nem inteiro nem float, trata como STRING
+        return (RuntimeValue){.type = TYPE_STRING, .data.strVal = strdup(buffer)};
+    }
+
+    fprintf(stderr, "Erro ao ler input ou EOF alcançado.\n");
+    return (RuntimeValue){.type = TYPE_INT, .data.intVal = 0};
+}
+
 int main(int argc, char *argv[]) {
     #if YYDEBUG
         yydebug = 1;
     #endif
+
+    init_symbol_table();
 
     if (argc > 1) {
         FILE *file = fopen(argv[1], "r");
@@ -1663,4 +2040,7 @@ int main(int argc, char *argv[]) {
         printf("Análise falhou.\n");
         return 1;
     }
+
+    free_symbol_table_memory();
+    return 0;
 }

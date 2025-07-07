@@ -5,18 +5,14 @@
 #include <math.h>
 #include <stdarg.h>
 
-#include "symbol_table.h"
 #include "types.h"
-
-typedef struct ArgumentNode {
-    RuntimeValue value;
-    struct ArgumentNode *next;
-} ArgumentNode;
+#include "symbol_table.h"
 
 int yylex(void);
 void yyerror(const char *s);
 void my_printf_runtime(char *format_string, ArgumentNode *args_list);
 void free_argument_list(ArgumentNode *list);
+RuntimeValue runtime_input();
 
 extern int yylineno;
 extern FILE *yyin;
@@ -45,8 +41,8 @@ extern FILE *yyin;
 %token LEFT_SQUARE_BRACKET RIGHT_SQUARE_BRACKET
 %token COMMA COLON
 %token PRINTF
+%token INPUT
 
-// Removida a declaração %type <floatVal> expression_float
 %type <runtimeVal> expression
 %type <strVal> variable
 %type <argList> argument_list_printf
@@ -107,7 +103,7 @@ printf_statement:
     | PRINTF LEFT_PARENTHESIS ID RIGHT_PARENTHESIS ';'
     {
 
-        Symbol *sym = lookup_symbol($3); // Busca o valor do ID na tabela de símbolos
+        Symbol *sym = lookup_symbol($3);
 
         if (sym != NULL) {
             char *temp_format = NULL;
@@ -118,7 +114,7 @@ printf_statement:
                 perror("Erro ao alocar ArgumentNode para printf(ID)");
                 exit(EXIT_FAILURE);
             }
-            arg_list_temp->value = sym->value; // Usa o valor REAL do símbolo
+            arg_list_temp->value = sym->value; 
             arg_list_temp->next = NULL;
 
             if (arg_list_temp->value.type == TYPE_STRING && arg_list_temp->value.data.strVal != NULL) {
@@ -140,12 +136,12 @@ printf_statement:
                 my_printf_runtime(temp_format, arg_list_temp);
                 free(temp_format);
             }
-            free_argument_list(arg_list_temp); // Libera o nó temporário e sua string duplicada, se houver
+            free_argument_list(arg_list_temp);
         } else {
             fprintf(stderr, "Erro de runtime: Variável '%s' não definida na linha %d para printf.\n", $3, yylineno);
             yyerror("Variável não definida em printf()");
         }
-        free($3); // Libera o ID string duplicado pelo lexer
+        free($3);
     }
     ;
 
@@ -195,10 +191,9 @@ assignment:
         else if ($3.type == TYPE_STRING) printf("%s\n", $3.data.strVal);
         printf("\n");
 
-        // Usa a função da tabela hash
-        insert_symbol($1, $3); // Insere o nome e o valor
+        insert_symbol($1, $3);
 
-        free($1); // Libera o nome da variável (strdup pelo lexer)
+        free($1);
     }
     | array_access assignment_operator expression
     ;
@@ -219,30 +214,29 @@ expression:
     | STRING_LITERAL            { $$ = (RuntimeValue){.type = TYPE_STRING, .data.strVal = $1}; }
     | variable                  {
         printf("Usando variável %s\n", $1);
-        Symbol *sym = lookup_symbol($1); // Busca o símbolo na tabela hash
+        Symbol *sym = lookup_symbol($1);
         if (sym != NULL) {
             $$ = sym->value;
-            // Se o valor retornado for uma string, e você precisar que a expressão retorne uma *nova cópia*
-            // para evitar que o free subsequente do símbolo afete a expressão, faça um strdup aqui.
-            // Para inteiros e floats, a cópia por valor é suficiente.
             if ($$.type == TYPE_STRING && $$.data.strVal != NULL) {
                 $$.data.strVal = strdup($$.data.strVal);
             }
         } else {
             fprintf(stderr, "Erro de runtime: Variável '%s' não definida na linha %d.\n", $1, yylineno);
             yyerror("Variável não definida");
-            $$ = (RuntimeValue){.type = TYPE_INT, .data.intVal = 0}; // Valor padrão para erro
+            $$ = (RuntimeValue){.type = TYPE_INT, .data.intVal = 0};
         }
-        free($1); // Libera o nome da variável (strdup pelo lexer)
+        free($1);
     }
     | function_call             { $$ = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = 0.0}; }
     | array_access              { $$ = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = 0.0}; }
     | array_literal             { $$ = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = 0.0}; }
     | TRUE                      { $$ = (RuntimeValue){.type = TYPE_INT, .data.intVal = 1}; }
     | FALSE                     { $$ = (RuntimeValue){.type = TYPE_INT, .data.intVal = 0}; }
-    // As operações binárias agora usam 'expression' e fazem a coerção dentro da ação
+    | INPUT LEFT_PARENTHESIS RIGHT_PARENTHESIS {
+        printf("Chamada de input(). Aguardando entrada...\n");
+        $$ = runtime_input();
+    }
     | expression PLUS expression          {
-        // Exemplo de coerção para float para a operação de soma
         float val1 = ($1.type == TYPE_INT) ? (float)$1.data.intVal : $1.data.floatVal;
         float val2 = ($3.type == TYPE_INT) ? (float)$3.data.intVal : $3.data.floatVal;
         $$ = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = val1 + val2};
@@ -264,7 +258,6 @@ expression:
         else { yyerror("Divisão por zero"); $$ = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = 0.0}; }
     }
     | expression MOD expression           {
-        // Modulo geralmente é para inteiros, então coerção para int aqui
         int val1 = ($1.type == TYPE_FLOAT) ? (int)$1.data.floatVal : $1.data.intVal;
         int val2 = ($3.type == TYPE_FLOAT) ? (int)$3.data.floatVal : $3.data.intVal;
         if(val2 != 0) $$ = (RuntimeValue){.type = TYPE_INT, .data.intVal = val1 % val2};
@@ -275,9 +268,7 @@ expression:
         float val2 = ($3.type == TYPE_INT) ? (float)$3.data.intVal : $3.data.floatVal;
         $$ = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = pow(val1, val2)};
     }
-    // Operações de comparação e lógicas também usam 'expression'
     | expression EQUAL expression         {
-        // Simplificado: compara como floats se algum for float, senão como ints
         if ($1.type == TYPE_FLOAT || $3.type == TYPE_FLOAT) {
             float val1 = ($1.type == TYPE_INT) ? (float)$1.data.intVal : $1.data.floatVal;
             float val2 = ($3.type == TYPE_INT) ? (float)$3.data.intVal : $3.data.floatVal;
@@ -381,28 +372,24 @@ void my_printf_runtime(char *format_string, ArgumentNode *args_list) {
     char *p = format_string;
     ArgumentNode *current_arg = args_list;
 
-    // A string literal em C inclui as aspas, mas a sua lógica de printf as remove.
-    // Ajuste para ignorar as aspas iniciais/finais se a string veio delas.
     if (p[0] == '"' || p[0] == '\'') {
         p++;
     }
-    // Encontrar o final real da string, desconsiderando a aspa final se presente
     size_t len = strlen(format_string);
     char *end_p = format_string + len;
     if (len > 0 && (*(end_p - 1) == '"' || *(end_p - 1) == '\'')) {
-        end_p--; // Aponta para o caractere antes da aspa final
+        end_p--;
     }
 
 
-    while (p < end_p && *p != '\0') { // Loop até o final da string real, sem a aspa final
+    while (p < end_p && *p != '\0') {
         if (*p == '%' && *(p+1) != '\0') {
-            p++; // Avança para o especificador de formato
+            p++;
 
-            // O caso '%' literal não deve consumir um argumento
             if (*p == '%') {
                 printf("%%");
-                p++; // Avança para o próximo caractere
-                continue; // Pula para a próxima iteração do loop
+                p++;
+                continue;
             }
 
             if (current_arg == NULL) {
@@ -436,7 +423,6 @@ void my_printf_runtime(char *format_string, ArgumentNode *args_list) {
                     if (current_arg->value.type == TYPE_STRING) {
                         char *temp_str = strdup(current_arg->value.data.strVal);
                         if (temp_str) {
-                            // Ajusta o strdup para remover as aspas se existirem
                             if (strlen(temp_str) >= 2 && (temp_str[0] == '"' || temp_str[0] == '\'') && (temp_str[strlen(temp_str)-1] == '"' || temp_str[strlen(temp_str)-1] == '\'')) {
                                 memmove(temp_str, temp_str + 1, strlen(temp_str) - 2);
                                 temp_str[strlen(temp_str) - 2] = '\0';
@@ -453,10 +439,10 @@ void my_printf_runtime(char *format_string, ArgumentNode *args_list) {
                     break;
                 default:
                     fprintf(stderr, "Aviso de runtime: Especificador de formato desconhecido: %c\n", *p);
-                    printf("%%%c", *p); // Imprime o '%' e o caractere desconhecido
+                    printf("%%%c", *p);
                     break;
             }
-            current_arg = current_arg->next; // Avança para o próximo argumento
+            current_arg = current_arg->next;
         } else if (*p == '\\' && *(p+1) != '\0') {
             p++;
             switch (*p) {
@@ -471,7 +457,7 @@ void my_printf_runtime(char *format_string, ArgumentNode *args_list) {
         else {
             printf("%c", *p);
         }
-        p++; // Avança para o próximo caractere na string de formato
+        p++;
     }
 
     if (current_arg != NULL) {
@@ -490,6 +476,31 @@ void free_argument_list(ArgumentNode *list) {
         list = list->next;
         free(temp);
     }
+}
+
+RuntimeValue runtime_input() {
+    char buffer[256];
+    printf("> ");
+    if (fgets(buffer, sizeof(buffer), stdin) != NULL) {
+        buffer[strcspn(buffer, "\n")] = 0;
+
+        char *endptr;
+
+        long int_candidate = strtol(buffer, &endptr, 10);
+        if (*endptr == '\0' && endptr != buffer) {
+            return (RuntimeValue){.type = TYPE_INT, .data.intVal = (int)int_candidate};
+        }
+
+        float float_candidate = strtof(buffer, &endptr);
+        if (*endptr == '\0' && endptr != buffer) {
+            return (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = float_candidate};
+        }
+
+        return (RuntimeValue){.type = TYPE_STRING, .data.strVal = strdup(buffer)};
+    }
+
+    fprintf(stderr, "Erro ao ler input ou EOF alcançado.\n");
+    return (RuntimeValue){.type = TYPE_INT, .data.intVal = 0};
 }
 
 int main(int argc, char *argv[]) {

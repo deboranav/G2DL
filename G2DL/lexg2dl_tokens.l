@@ -22,6 +22,7 @@
 "true"                     { return TRUE; }
 "false"                    { return FALSE; }
 "printf"                   { return PRINTF; }
+"input"                    { return INPUT ; }
 
 "+="                       { return PLUS_ASSIGNMENT; }
 "-="                       { return MINUS_ASSIGNMENT; }
