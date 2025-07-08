@@ -6,6 +6,7 @@
 #include "utils/types.h"
 #include "interpreter/symbol_table.h"
 #include "parser/parser_g2dl.tab.h"
+#include "ast/ast.h"
 
 extern void yyerror(const char *s);
 %}

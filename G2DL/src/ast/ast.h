@@ -216,10 +216,10 @@ typedef struct AstNodeList {
 
 // Nó para argumentos de chamadas de função ou printf (dentro da AST)
 // Este nó serve como um elemento de uma lista encadeada para argumentos.
-typedef struct ArgumentNode {
-    AstNode *node;              // O nó da AST que representa a expressão do argumento
-    struct ArgumentNode *next;  // Próximo argumento na lista
-} ArgumentNode;
+//typedef struct ArgumentNode {
+//    AstNode *node;              // O nó da AST que representa a expressão do argumento
+//    struct ArgumentNode *next;  // Próximo argumento na lista
+//} ArgumentNode;
 
 
 // --- Declarações das Funções Construtoras da AST ---

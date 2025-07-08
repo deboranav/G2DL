@@ -14,7 +14,7 @@
 // Para o parser, que contém yyparse() e o lexer, que contém yylex()
 // O arquivo gerado pelo Bison normalmente é chamado de parser.tab.h ou parser.h
 // Você deve incluir o .h que Bison gera para as definições de token e yysymbol_kind_t
-#include "parser/parser.h"      // Inclui parser.h (gerado por Bison)
+#include "parser/parser_g2dl.tab.h"      // Inclui parser.h (gerado por Bison)
 // O lexer.h se você tiver protótipos de funções do lexer lá, mas yylex já é externo.
 // #include "lexer/lexer.h"
 
