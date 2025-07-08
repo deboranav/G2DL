@@ -1,4 +1,6 @@
 %{
+#include "types.h"
+#include "symbol_table.h"
 #include "parser_g2dl.tab.h" 
 #include <stdio.h>
 #include <stdlib.h>
