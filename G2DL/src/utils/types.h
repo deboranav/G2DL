@@ -14,7 +14,7 @@ typedef enum {
     TYPE_VOID,      // Para indicar ausência de valor (ex: retorno de funções sem valor)
     TYPE_NULL,      // Para representar um valor nulo (se sua linguagem suportar)
     TYPE_RETURN_VALUE, // Um tipo especial para sinalizar que um valor é um retorno de função
-    TYPE_BREAK_FLOW, // Um tipo especial para sinalizar um `break` no fluxo de controle
+    TYPE_BREAK, // Um tipo especial para sinalizar um `break` no fluxo de controle
     // Adicione outros tipos conforme sua linguagem cresce (ex: FUNCTION_POINTER)
 } ValueType;
 
