@@ -35,8 +35,8 @@
    especially those whose name start with YY_ or yy_.  They are
    private implementation details that can be changed or removed.  */
 
-#ifndef YY_YY_Y_TAB_H_INCLUDED
-# define YY_YY_Y_TAB_H_INCLUDED
+#ifndef YY_YY_PARSER_G2DL_TAB_H_INCLUDED
+# define YY_YY_PARSER_G2DL_TAB_H_INCLUDED
 /* Debug traces.  */
 #ifndef YYDEBUG
 # define YYDEBUG 1
@@ -65,41 +65,44 @@ extern int yydebug;
     FALSE = 266,                   /* FALSE  */
     INT = 267,                     /* INT  */
     STRING = 268,                  /* STRING  */
-    ID = 269,                      /* ID  */
-    STRING_LITERAL = 270,          /* STRING_LITERAL  */
-    INTEGER = 271,                 /* INTEGER  */
-    FLOAT = 272,                   /* FLOAT  */
-    ASSIGNMENT = 273,              /* ASSIGNMENT  */
-    PLUS = 274,                    /* PLUS  */
-    MINUS = 275,                   /* MINUS  */
-    MULTIPLY = 276,                /* MULTIPLY  */
-    DIVIDE = 277,                  /* DIVIDE  */
-    MOD = 278,                     /* MOD  */
-    POWER = 279,                   /* POWER  */
-    EQUAL = 280,                   /* EQUAL  */
-    NOT_EQUAL = 281,               /* NOT_EQUAL  */
-    LESS_THAN = 282,               /* LESS_THAN  */
-    GREATER_THAN = 283,            /* GREATER_THAN  */
-    LESS_THAN_OR_EQUAL = 284,      /* LESS_THAN_OR_EQUAL  */
-    GREATER_THAN_OR_EQUAL = 285,   /* GREATER_THAN_OR_EQUAL  */
-    AND = 286,                     /* AND  */
-    OR = 287,                      /* OR  */
-    NOT = 288,                     /* NOT  */
-    PLUS_ASSIGNMENT = 289,         /* PLUS_ASSIGNMENT  */
-    MINUS_ASSIGNMENT = 290,        /* MINUS_ASSIGNMENT  */
-    MULTIPLY_ASSIGNMENT = 291,     /* MULTIPLY_ASSIGNMENT  */
-    DIVIDE_ASSIGNMENT = 292,       /* DIVIDE_ASSIGNMENT  */
-    MOD_ASSIGNMENT = 293,          /* MOD_ASSIGNMENT  */
-    POWER_ASSIGNMENT = 294,        /* POWER_ASSIGNMENT  */
-    LEFT_PARENTHESIS = 295,        /* LEFT_PARENTHESIS  */
-    RIGHT_PARENTHESIS = 296,       /* RIGHT_PARENTHESIS  */
-    LEFT_CURLY_BRACKET = 297,      /* LEFT_CURLY_BRACKET  */
-    RIGHT_CURLY_BRACKET = 298,     /* RIGHT_CURLY_BRACKET  */
-    LEFT_SQUARE_BRACKET = 299,     /* LEFT_SQUARE_BRACKET  */
-    RIGHT_SQUARE_BRACKET = 300,    /* RIGHT_SQUARE_BRACKET  */
-    COMMA = 301,                   /* COMMA  */
-    COLON = 302,                   /* COLON  */
-    PRINTF = 303                   /* PRINTF  */
+    FLOAT = 269,                   /* FLOAT  */
+    ID = 270,                      /* ID  */
+    STRING_LITERAL = 271,          /* STRING_LITERAL  */
+    INTEGER = 272,                 /* INTEGER  */
+    FLOAT_LITERAL = 273,           /* FLOAT_LITERAL  */
+    ASSIGNMENT = 274,              /* ASSIGNMENT  */
+    PLUS = 275,                    /* PLUS  */
+    MINUS = 276,                   /* MINUS  */
+    MULTIPLY = 277,                /* MULTIPLY  */
+    DIVIDE = 278,                  /* DIVIDE  */
+    MOD = 279,                     /* MOD  */
+    POWER = 280,                   /* POWER  */
+    EQUAL = 281,                   /* EQUAL  */
+    NOT_EQUAL = 282,               /* NOT_EQUAL  */
+    LESS_THAN = 283,               /* LESS_THAN  */
+    GREATER_THAN = 284,            /* GREATER_THAN  */
+    LESS_THAN_OR_EQUAL = 285,      /* LESS_THAN_OR_EQUAL  */
+    GREATER_THAN_OR_EQUAL = 286,   /* GREATER_THAN_OR_EQUAL  */
+    AND = 287,                     /* AND  */
+    OR = 288,                      /* OR  */
+    NOT = 289,                     /* NOT  */
+    PLUS_ASSIGNMENT = 290,         /* PLUS_ASSIGNMENT  */
+    MINUS_ASSIGNMENT = 291,        /* MINUS_ASSIGNMENT  */
+    MULTIPLY_ASSIGNMENT = 292,     /* MULTIPLY_ASSIGNMENT  */
+    DIVIDE_ASSIGNMENT = 293,       /* DIVIDE_ASSIGNMENT  */
+    MOD_ASSIGNMENT = 294,          /* MOD_ASSIGNMENT  */
+    POWER_ASSIGNMENT = 295,        /* POWER_ASSIGNMENT  */
+    LEFT_PARENTHESIS = 296,        /* LEFT_PARENTHESIS  */
+    RIGHT_PARENTHESIS = 297,       /* RIGHT_PARENTHESIS  */
+    LEFT_CURLY_BRACKET = 298,      /* LEFT_CURLY_BRACKET  */
+    RIGHT_CURLY_BRACKET = 299,     /* RIGHT_CURLY_BRACKET  */
+    LEFT_SQUARE_BRACKET = 300,     /* LEFT_SQUARE_BRACKET  */
+    RIGHT_SQUARE_BRACKET = 301,    /* RIGHT_SQUARE_BRACKET  */
+    COMMA = 302,                   /* COMMA  */
+    COLON = 303,                   /* COLON  */
+    PRINTF = 304,                  /* PRINTF  */
+    INPUT = 305,                   /* INPUT  */
+    THEN = 306                     /* THEN  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -108,13 +111,15 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 11 "parser_g2dl.y"
+#line 23 "parser_g2dl.y"
 
     int intVal;
     float floatVal;
     char *strVal;
+    RuntimeValue runtimeVal;
+    ArgumentNode *argList;
 
-#line 118 "y.tab.h"
+#line 123 "parser_g2dl.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -129,4 +134,4 @@ extern YYSTYPE yylval;
 int yyparse (void);
 
 
-#endif /* !YY_YY_Y_TAB_H_INCLUDED  */
+#endif /* !YY_YY_PARSER_G2DL_TAB_H_INCLUDED  */

@@ -1,4 +1,42 @@
-*.tab.c
-*.tab.h
-*.yy.c
-*.exe
+# Arquivos gerados pelo Flex e Bison
+src/parser/*.tab.c
+src/parser/*.tab.h
+src/parser/*.output
+src/lexer/*.yy.c
+
+# Diretórios de build e binários
+build/
+bin/
+
+# Arquivos de depuração
+*.o
+*.gch
+*.dSYM/  # macOS debug symbols
+*.exe    # Executáveis Windows
+*.out    # Executáveis Linux/macOS
+core
+
+# Logs e dados temporários
+*.log
+*.tmp
+temp/
+
+# Editores e IDEs (exemplos comuns, adicione os seus se usar outros)
+.idea/           # IntelliJ / CLion
+.vscode/         # VS Code
+*.iml            # IntelliJ
+.DS_Store        # macOS
+Thumbs.db        # Windows
+ehthumbs.db      # Windows
+*.sublime-project
+*.sublime-workspace
+*.swp            # Vim swap files
+*~               # Backup files
+
+# Dependências de pacotes (se você usar algo como conan, vcpkg, etc.)
+# libs/
+# packages/
+
+# Arquivos de configuração de ambiente local
+.env
+.venv/

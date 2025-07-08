@@ -1,7 +1,0 @@
-int a = 2
-int b = 7
-a += 4
-//printf(a)
-//printf(b)
-int c = a + b
-//printf(c)
