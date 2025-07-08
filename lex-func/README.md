@@ -9,7 +9,7 @@ $ make
 ### Passo 2:
 
 ```bash
-$ ./compiler_g2dl input.txt
+$ ./compiler_g2dl shorter_2.txt
 ```
 
 ### Passo extra para limpar o compilador:
