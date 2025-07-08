@@ -4,4 +4,6 @@ c = 4;
 
 d = x ** 2 - y + c;
 
+printf("Resultado:\n");
+printf("\n");
 printf(d);

@@ -1,26 +1,31 @@
+# Exemplo simplificado de Makefile
 CC = gcc
-LEX = flex
-YACC = bison
-TARGET = compiler_g2dl
+CFLAGS = -Wall -Wextra -std=c11 -g
+# Adiciona todos os diretórios que contêm arquivos .h para a busca do compilador
+# O -I. é para o diretório raiz do src e include
+INCLUDE_DIRS = -I. -I./src/ast -I./src/lexer -I./src/parser -I./src/interpreter -I./src/utils -I./include
 
-LIBS = -lm
+# Lista todos os arquivos .c em subdiretórios
+SRC_FILES = $(wildcard src/ast/*.c) \
+            $(wildcard src/lexer/*.c) \
+            $(wildcard src/parser/*.c) \
+            $(wildcard src/interpreter/*.c) \
+            $(wildcard src/utils/*.c) \
+            src/main.c
 
-L_FILE = lexg2dl_tokens.l
-Y_FILE = parser_g2dl.y
-L_C_FILE = $(L_FILE:.l=.yy.c)
-Y_C_FILE = $(Y_FILE:.y=.tab.c)
-Y_H_FILE = $(Y_FILE:.y=.tab.h)
+# Gera os arquivos .o no diretório build/
+OBJ_FILES = $(patsubst src/%.c,build/%.o,$(SRC_FILES))
 
-all: $(TARGET)
+EXECUTABLE = build/my_interpreter
 
-$(TARGET): $(L_C_FILE) $(Y_C_FILE) $(Y_H_FILE)
-	$(CC) $(Y_C_FILE) $(L_C_FILE) -o $(TARGET) $(LIBS)
+all: $(EXECUTABLE)
 
-$(L_C_FILE): $(L_FILE) $(Y_H_FILE)
-	$(LEX) -o $(L_C_FILE) $(L_FILE)
+$(EXECUTABLE): $(OBJ_FILES)
+	$(CC) $(CFLAGS) $^ -o $@
 
-$(Y_C_FILE) $(Y_H_FILE): $(Y_FILE)
-	$(YACC) -d -Wcounterexamples -o $(Y_C_FILE) $(Y_FILE)
+build/%.o: src/%.c
+	@mkdir -p $(@D) # Cria o diretório 'build/subpasta' se não existir
+	$(CC) $(CFLAGS) $(INCLUDE_DIRS) -c $< -o $@
 
 clean:
-	rm -f $(TARGET) $(L_C_FILE) $(Y_C_FILE) $(Y_H_FILE)
+	rm -rf build/

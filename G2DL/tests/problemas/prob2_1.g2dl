@@ -1,0 +1,7 @@
+num = 1;
+
+while (num >= 0) {
+    
+    printf("Digite um numero (um numero negativo encerra): ");
+    num = input();
+}
