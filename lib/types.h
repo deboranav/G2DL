@@ -8,7 +8,8 @@ typedef enum {
     TYPE_INT,
     TYPE_FLOAT,
     TYPE_STRING,
-    TYPE_MATRIX
+    TYPE_MATRIX,
+    TYPE_FUNCTION,
 } DataType;
 
 #endif // TYPES_H

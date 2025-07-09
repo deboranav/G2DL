@@ -11,8 +11,8 @@
 int yylex(void);
 void yyerror(const char *s);
 
-// Variável global para armazenar o corpo do código C gerado
-char *generated_code_body = NULL; 
+char *function_definitions_code = NULL;
+char *main_body_code = NULL;
 
 void declare_variables(FILE *file);
 
@@ -30,7 +30,7 @@ extern FILE *yyin;
 
 %token FUNCTION RETURN BREAK IF ELSE WHILE FOR TRUE FALSE
 %token INT STRING FLOAT 
-%token MATRIX
+%token MATRIX // <-- MUDANÇA: Novo token para a palavra-chave 'function'
 
 %token <strVal> ID STRING_LITERAL
 %token <intVal> INTEGER
@@ -45,9 +45,11 @@ extern FILE *yyin;
 %token PRINTF
 %token INPUT
 
+
 %type <strVal> expression assignment variable block statements statement control_structure printf_statement
 %type <strVal> argument_list_printf
 %type <strVal> declaration matrix_access
+%type <strVal> function_definition function_call
 
 %left OR
 %left AND
@@ -64,10 +66,38 @@ extern FILE *yyin;
 
 %%
 
+//A gramática agora é definida por 'source_file_content' que separa funções e o corpo principal.
 program:
-    statements { generated_code_body = $1; }
+    source_file_content
     ;
 
+source_file_content:
+    /* Vazio: inicializa as strings globais */
+    {
+        function_definitions_code = strdup("");
+        main_body_code = strdup("");
+    }
+    | source_file_content function_definition {
+        // Anexa o código da nova função à string de funções
+        char* temp = NULL;
+        asprintf(&temp, "%s%s", function_definitions_code, $2);
+        free(function_definitions_code);
+        free($2);
+        function_definitions_code = temp;
+    }
+    | source_file_content statement {
+        // Anexa o código do comando à string do corpo principal
+        if ($2) { // Ignora em caso de erro de sintaxe
+            char* temp = NULL;
+            asprintf(&temp, "%s%s", main_body_code, $2);
+            free(main_body_code);
+            free($2);
+            main_body_code = temp;
+        }
+    }
+    ;
+
+// 'statements' ainda é usado dentro de blocos {}, então sua definição permanece.
 statements:
     /* vazio */ { $$ = strdup(""); }
     | statements statement {
@@ -82,7 +112,8 @@ statements:
     ;
 
 statement:
-    declaration ';'         { $$ = $1; } // <-- MUDANÇA: Adicionada regra de declaração
+    function_call ';'       { $$ = $1; } // <-- MUDANÇA: Chamada de função é um comando.
+    | declaration ';'         { $$ = $1; } 
     | assignment ';'          { $$ = $1; }
     | expression ';'          { asprintf(&$$, "    %s;\n", $1); free($1); }
     | control_structure     { $$ = $1; }
@@ -95,19 +126,41 @@ statement:
                             }
     ;
 
+//Definição de uma função simples
+function_definition:
+    FUNCTION ID LEFT_PARENTHESIS RIGHT_PARENTHESIS block {
+        if (lookup_symbol($2) != NULL) {
+            char error_msg[256];
+            sprintf(error_msg, "Erro Semântico: Função '%s' já foi declarada.", $2);
+            yyerror(error_msg);
+            YYABORT;
+        }
+        add_symbol($2, TYPE_FUNCTION);
+        asprintf(&$$, "void %s() %s\n", $2, $5);
+        free($2);
+        free($5);
+    }
+    ;
+
+//Chamada de uma função simples
+function_call:
+    ID LEFT_PARENTHESIS RIGHT_PARENTHESIS {
+        // Futuramente, podemos verificar se $1 é mesmo uma função.
+        asprintf(&$$, "    %s();", $1);
+        free($1);
+    }
+    ;
+
 declaration:
-     MATRIX ID LEFT_SQUARE_BRACKET INTEGER COMMA INTEGER RIGHT_SQUARE_BRACKET
+    MATRIX ID LEFT_SQUARE_BRACKET INTEGER COMMA INTEGER RIGHT_SQUARE_BRACKET
     {
-        // 1. VERIFICA se o símbolo já existe
         if (lookup_symbol($2) != NULL) {
             char error_msg[256];
             sprintf(error_msg, "Erro Semântico: Variável '%s' já foi declarada.", $2);
             yyerror(error_msg);
-            YYABORT; // Para a compilação imediatamente
+            YYABORT;
         }
-        
-        // 2. Se não existe, ADICIONA e gera o código
-        add_matrix_symbol($2, $4, $6); 
+        // add_matrix_symbol($2, $4, $6); 
         asprintf(&$$, "    double %s[%d][%d];\n", $2, $4, $6);
         free($2);
     }
@@ -145,28 +198,20 @@ block:
     ;
 
 assignment:
-    // Atribuição a uma variável escalar
-   variable ASSIGNMENT expression {
-        // <-- MUDANÇA: Lógica de declaração implícita para escalares
-        // 1. VERIFICA se o símbolo ainda não existe
+    variable ASSIGNMENT expression {
         if (lookup_symbol($1) == NULL) {
-            // É a primeira vez que vemos essa variável, então a declaramos.
-            add_symbol($1, TYPE_UNKNOWN); // Usamos um tipo genérico por enquanto
+            add_symbol($1, TYPE_UNKNOWN);
         }
-        // 2. Gera o código para a atribuição
         asprintf(&$$, "    %s = %s;\n", $1, $3);
         free($1);
         free($3);
     }
     | matrix_access ASSIGNMENT expression {
-        // Para A[i,j] = expr, não há declaração, então apenas geramos o código.
-        // Uma verificação futura poderia ser se 'A' é de fato uma matriz.
         asprintf(&$$, "    %s = %s;\n", $1, $3);
         free($1);
         free($3);
     }
     | variable PLUS_ASSIGNMENT expression {
-        // Semelhante à atribuição normal, garante que a variável exista.
         if (lookup_symbol($1) == NULL) {
              char error_msg[256];
             sprintf(error_msg, "Erro Semântico: Variável '%s' não declarada.", $1);
@@ -184,7 +229,7 @@ expression:
     | FLOAT_LITERAL             { asprintf(&$$, "%f", $1); }
     | STRING_LITERAL            { $$ = $1; }
     | variable                  { $$ = $1; }
-    | matrix_access             { $$ = $1; } // <-- MUDANÇA: Acesso a matriz é uma expressão
+    | matrix_access             { $$ = $1; } 
     | TRUE                      { $$ = strdup("1"); }
     | FALSE                     { $$ = strdup("0"); }
     | INPUT LEFT_PARENTHESIS RIGHT_PARENTHESIS {
@@ -212,11 +257,9 @@ variable:
     ID { $$ = $1; }
     ;
 
-// <-- NOVA REGRA: Para acessar um elemento da matriz M[i, j]
 matrix_access:
     ID LEFT_SQUARE_BRACKET expression COMMA expression RIGHT_SQUARE_BRACKET
     {
-        // Gera o código C, fazendo cast dos índices para int por segurança
         asprintf(&$$, "%s[(int)(%s)][(int)(%s)]", $1, $3, $5);
         free($1); free($3); free($5);
     }
@@ -249,11 +292,12 @@ void yyerror(const char *msg) {
 }
 
 void declare_variables(FILE* file) {
-    fprintf(file, "    // Variáveis escalares inferidas pelo tradutor\n");
+    fprintf(file, "    // Variáveis globais e escalares inferidas pelo tradutor\n");
     for (int i = 0; i < get_symbol_count(); i++) {
         Symbol *sym = get_symbol_by_index(i);
         if (sym) {
-            if (sym->type != TYPE_MATRIX) {
+            // Não declara as funções aqui, pois elas são definidas em outro lugar.
+            if (sym->type != TYPE_MATRIX && sym->type != TYPE_FUNCTION) {
                 if (sym->type == TYPE_STRING) {
                      fprintf(file, "    char* %s;\n", sym->name);
                 } else {
@@ -265,6 +309,7 @@ void declare_variables(FILE* file) {
     fprintf(file, "\n");
 }
 
+// <-- MUDANÇA: A função main foi completamente reescrita para montar o arquivo final.
 int main(int argc, char *argv[]) {
     #if YYDEBUG
         yydebug = 1;
@@ -282,44 +327,53 @@ int main(int argc, char *argv[]) {
 
     init_symbol_table();
     
-    int result = yyparse();
+    int result = yyparse(); // Isso preenche as strings globais function_definitions_code e main_body_code
 
-    if (result == 0 && generated_code_body != NULL) {
+    if (result == 0) {
         FILE* final_output_file = fopen("output.c", "w");
         if (!final_output_file) {
             perror("Não foi possível criar o arquivo de saída output.c");
-            if (generated_code_body) free(generated_code_body);
+            if (function_definitions_code) free(function_definitions_code);
+            if (main_body_code) free(main_body_code);
             return 1;
         }
 
-        fprintf(final_output_file, "#include <stdio.h>\n");
-        fprintf(final_output_file, "#include <stdlib.h>\n");
-        fprintf(final_output_file, "#include <string.h>\n");
-        fprintf(final_output_file, "#include <math.h>\n\n");
+        // --- Ordem Correta de Escrita no Arquivo Final ---
+        // 1. Cabeçalhos C
+        fprintf(final_output_file, "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <math.h>\n\n");
         
-        fprintf(final_output_file, "double runtime_input_c() {\n");
-        fprintf(final_output_file, "    char buffer[256];\n");
-        fprintf(final_output_file, "    if (fgets(buffer, sizeof(buffer), stdin) != NULL) {\n");
-        fprintf(final_output_file, "        return atof(buffer);\n");
-        fprintf(final_output_file, "    }\n");
-        fprintf(final_output_file, "    return 0.0;\n}\n\n");
+        // 2. Funções auxiliares (como runtime_input_c)
+        fprintf(final_output_file, "double runtime_input_c() {\n    char buffer[256];\n    if (fgets(buffer, sizeof(buffer), stdin) != NULL) { return atof(buffer); }\n    return 0.0;\n}\n\n");
         
-        fprintf(final_output_file, "int main() {\n");
+        // 3. Definições de funções traduzidas do código do usuário
+        if (function_definitions_code) {
+            fprintf(final_output_file, "%s", function_definitions_code);
+        }
         
+        // 4. Início da função main() do C
+        fprintf(final_output_file, "\nint main() {\n");
+        
+        // 5. Declaração de variáveis globais/escalares
         declare_variables(final_output_file);
         
-        fprintf(final_output_file, "%s", generated_code_body);
+        // 6. Corpo principal do código (comandos fora de funções)
+        if (main_body_code) {
+            fprintf(final_output_file, "%s", main_body_code);
+        }
         
+        // 7. Fechamento da função main()
         fprintf(final_output_file, "\n    return 0;\n}\n");
         
         fclose(final_output_file);
         printf("Tradução concluída com sucesso. Verifique o arquivo output.c\n");
 
     } else {
-        printf("A tradução falhou devido a erros de sintaxe ou código vazio.\n");
+        printf("A tradução falhou devido a erros de sintaxe ou semânticos.\n");
     }
 
-    if (generated_code_body) free(generated_code_body);
+    // Libera a memória alocada para as strings de código
+    if (function_definitions_code) free(function_definitions_code);
+    if (main_body_code) free(main_body_code);
     if (yyin != stdin) fclose(yyin);
     free_symbol_table_memory();
 
