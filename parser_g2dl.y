@@ -29,7 +29,9 @@ extern FILE *yyin;
 }
 
 %token FUNCTION RETURN BREAK IF ELSE WHILE FOR TRUE FALSE
-%token INT STRING FLOAT
+%token INT STRING FLOAT 
+%token MATRIX
+
 %token <strVal> ID STRING_LITERAL
 %token <intVal> INTEGER
 %token <floatVal> FLOAT_LITERAL
@@ -45,6 +47,7 @@ extern FILE *yyin;
 
 %type <strVal> expression assignment variable block statements statement control_structure printf_statement
 %type <strVal> argument_list_printf
+%type <strVal> declaration matrix_access
 
 %left OR
 %left AND
@@ -61,7 +64,6 @@ extern FILE *yyin;
 
 %%
 
-// A gramática inteira agora constrói uma única string.
 program:
     statements { generated_code_body = $1; }
     ;
@@ -80,7 +82,8 @@ statements:
     ;
 
 statement:
-    assignment ';'          { $$ = $1; }
+    declaration ';'         { $$ = $1; } // <-- MUDANÇA: Adicionada regra de declaração
+    | assignment ';'          { $$ = $1; }
     | expression ';'          { asprintf(&$$, "    %s;\n", $1); free($1); }
     | control_structure     { $$ = $1; }
     | printf_statement      { $$ = $1; }
@@ -92,16 +95,31 @@ statement:
                             }
     ;
 
-// Regras de 'printf' corrigidas para gerar C válido
+declaration:
+     MATRIX ID LEFT_SQUARE_BRACKET INTEGER COMMA INTEGER RIGHT_SQUARE_BRACKET
+    {
+        // 1. VERIFICA se o símbolo já existe
+        if (lookup_symbol($2) != NULL) {
+            char error_msg[256];
+            sprintf(error_msg, "Erro Semântico: Variável '%s' já foi declarada.", $2);
+            yyerror(error_msg);
+            YYABORT; // Para a compilação imediatamente
+        }
+        
+        // 2. Se não existe, ADICIONA e gera o código
+        add_matrix_symbol($2, $4, $6); 
+        asprintf(&$$, "    double %s[%d][%d];\n", $2, $4, $6);
+        free($2);
+    }
+    ;
+
 printf_statement:
-    // Caso: printf("string literal", args...)
     PRINTF LEFT_PARENTHESIS STRING_LITERAL COMMA argument_list_printf RIGHT_PARENTHESIS ';'
     {
         asprintf(&$$, "    printf(%s, %s);\n", $3, $5);
         free($3);
         free($5);
     }
-    // Caso: printf("string literal")
     | PRINTF LEFT_PARENTHESIS STRING_LITERAL RIGHT_PARENTHESIS ';'
     {
         asprintf(&$$, "    printf(%s);\n", $3);
@@ -127,14 +145,34 @@ block:
     ;
 
 assignment:
-    variable ASSIGNMENT expression {
-        add_symbol($1, TYPE_UNKNOWN);
+    // Atribuição a uma variável escalar
+   variable ASSIGNMENT expression {
+        // <-- MUDANÇA: Lógica de declaração implícita para escalares
+        // 1. VERIFICA se o símbolo ainda não existe
+        if (lookup_symbol($1) == NULL) {
+            // É a primeira vez que vemos essa variável, então a declaramos.
+            add_symbol($1, TYPE_UNKNOWN); // Usamos um tipo genérico por enquanto
+        }
+        // 2. Gera o código para a atribuição
+        asprintf(&$$, "    %s = %s;\n", $1, $3);
+        free($1);
+        free($3);
+    }
+    | matrix_access ASSIGNMENT expression {
+        // Para A[i,j] = expr, não há declaração, então apenas geramos o código.
+        // Uma verificação futura poderia ser se 'A' é de fato uma matriz.
         asprintf(&$$, "    %s = %s;\n", $1, $3);
         free($1);
         free($3);
     }
     | variable PLUS_ASSIGNMENT expression {
-        add_symbol($1, TYPE_UNKNOWN);
+        // Semelhante à atribuição normal, garante que a variável exista.
+        if (lookup_symbol($1) == NULL) {
+             char error_msg[256];
+            sprintf(error_msg, "Erro Semântico: Variável '%s' não declarada.", $1);
+            yyerror(error_msg);
+            YYABORT;
+        }
         asprintf(&$$, "    %s += %s;\n", $1, $3);
         free($1);
         free($3);
@@ -146,6 +184,7 @@ expression:
     | FLOAT_LITERAL             { asprintf(&$$, "%f", $1); }
     | STRING_LITERAL            { $$ = $1; }
     | variable                  { $$ = $1; }
+    | matrix_access             { $$ = $1; } // <-- MUDANÇA: Acesso a matriz é uma expressão
     | TRUE                      { $$ = strdup("1"); }
     | FALSE                     { $$ = strdup("0"); }
     | INPUT LEFT_PARENTHESIS RIGHT_PARENTHESIS {
@@ -171,6 +210,16 @@ expression:
 
 variable:
     ID { $$ = $1; }
+    ;
+
+// <-- NOVA REGRA: Para acessar um elemento da matriz M[i, j]
+matrix_access:
+    ID LEFT_SQUARE_BRACKET expression COMMA expression RIGHT_SQUARE_BRACKET
+    {
+        // Gera o código C, fazendo cast dos índices para int por segurança
+        asprintf(&$$, "%s[(int)(%s)][(int)(%s)]", $1, $3, $5);
+        free($1); free($3); free($5);
+    }
     ;
 
 control_structure:
@@ -200,14 +249,16 @@ void yyerror(const char *msg) {
 }
 
 void declare_variables(FILE* file) {
-    fprintf(file, "    // Variáveis inferidas pelo tradutor\n");
+    fprintf(file, "    // Variáveis escalares inferidas pelo tradutor\n");
     for (int i = 0; i < get_symbol_count(); i++) {
         Symbol *sym = get_symbol_by_index(i);
         if (sym) {
-            if (sym->type == TYPE_STRING) {
-                 fprintf(file, "    char* %s = NULL;\n", sym->name);
-            } else {
-                 fprintf(file, "    double %s;\n", sym->name);
+            if (sym->type != TYPE_MATRIX) {
+                if (sym->type == TYPE_STRING) {
+                     fprintf(file, "    char* %s;\n", sym->name);
+                } else {
+                     fprintf(file, "    double %s;\n", sym->name);
+                }
             }
         }
     }
@@ -241,14 +292,11 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
-        // Ordem correta de escrita no arquivo final:
-        // 1. Cabeçalhos
         fprintf(final_output_file, "#include <stdio.h>\n");
         fprintf(final_output_file, "#include <stdlib.h>\n");
         fprintf(final_output_file, "#include <string.h>\n");
         fprintf(final_output_file, "#include <math.h>\n\n");
         
-        // 2. Definição da função de input auxiliar
         fprintf(final_output_file, "double runtime_input_c() {\n");
         fprintf(final_output_file, "    char buffer[256];\n");
         fprintf(final_output_file, "    if (fgets(buffer, sizeof(buffer), stdin) != NULL) {\n");
@@ -258,13 +306,10 @@ int main(int argc, char *argv[]) {
         
         fprintf(final_output_file, "int main() {\n");
         
-        // 3. Declarações de variáveis (no topo do main)
         declare_variables(final_output_file);
         
-        // 4. Corpo do código traduzido
         fprintf(final_output_file, "%s", generated_code_body);
         
-        // 5. Fechamento do main
         fprintf(final_output_file, "\n    return 0;\n}\n");
         
         fclose(final_output_file);
