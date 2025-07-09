@@ -1,0 +1,110 @@
+// --- Declaração de todas as matrizes e variáveis ---
+
+// Matrizes para o Teste 1 (2x2)
+matrix A[2,2];
+matrix B[2,2];
+matrix SomaAB[2,2];
+matrix ProdAB[2,2];
+
+// Matrizes para o Teste 2 (tamanhos diferentes)
+matrix C[3,2];
+matrix D[2,3];
+matrix ProdCD[3,3]; // O produto de uma 3x2 por uma 2x3 resulta em uma 3x3
+
+// Variáveis para armazenar as dimensões para verificação
+rowsA = 2; colsA = 2;
+rowsB = 2; colsB = 2;
+rowsC = 3; colsC = 2;
+rowsD = 2; colsD = 3;
+
+
+// --- Início do Programa ---
+printf("--- Teste Estatico de Operacoes com Matrizes ---\n");
+
+// --- Inicialização Estática dos Valores ---
+
+// Matriz A
+A[0,0] = 1; A[0,1] = 2;
+A[1,0] = 3; A[1,1] = 4;
+
+// Matriz B
+B[0,0] = 5; B[0,1] = 6;
+B[1,0] = 7; B[1,1] = 8;
+
+// Matriz C
+C[0,0] = 1; C[0,1] = 2;
+C[1,0] = 3; C[1,1] = 4;
+C[2,0] = 5; C[2,1] = 6;
+
+// Matriz D
+D[0,0] = 1; D[0,1] = 0; D[0,2] = 2;
+D[1,0] = 0; D[1,1] = 3; D[1,2] = 1;
+
+
+// ==================================================================
+// Teste 1: Matrizes A[2,2] e B[2,2] -> Ambas as operações são possíveis
+// ==================================================================
+printf("\n--- Teste 1: Matrizes A[2,2] e B[2,2] ---\n");
+
+// Soma A + B
+printf("Calculando Soma (A + B)...\n");
+SomaAB[0,0] = A[0,0] + B[0,0];
+SomaAB[0,1] = A[0,1] + B[0,1];
+SomaAB[1,0] = A[1,0] + B[1,0];
+SomaAB[1,1] = A[1,1] + B[1,1];
+printf("Resultado da Soma:\n");
+printf("[ %.0f, %.0f ]\n", SomaAB[0,0], SomaAB[0,1]);
+printf("[ %.0f, %.0f ]\n", SomaAB[1,0], SomaAB[1,1]);
+
+// Produto A * B
+printf("Calculando Produto (A * B)...\n");
+ProdAB[0,0] = (A[0,0] * B[0,0]) + (A[0,1] * B[1,0]);
+ProdAB[0,1] = (A[0,0] * B[0,1]) + (A[0,1] * B[1,1]);
+ProdAB[1,0] = (A[1,0] * B[0,0]) + (A[1,1] * B[1,0]);
+ProdAB[1,1] = (A[1,0] * B[0,1]) + (A[1,1] * B[1,1]);
+printf("Resultado do Produto:\n");
+printf("[ %.0f, %.0f ]\n", ProdAB[0,0], ProdAB[0,1]);
+printf("[ %.0f, %.0f ]\n", ProdAB[1,0], ProdAB[1,1]);
+
+
+// ==================================================================
+// Teste 2: Matrizes C[3,2] e D[2,3] -> Soma impossível, Produto possível
+// ==================================================================
+printf("\n--- Teste 2: Matrizes C[3,2] e D[2,3] ---\n");
+
+// Tentativa de Soma C + D
+printf("\nVerificando Soma (C + D)...\n");
+if (rowsC == rowsD && colsC == colsD) {
+    // Este bloco de código não será executado
+    printf("A soma é possível.\n");
+} else {
+    printf("IMPOSSÍVEL SOMAR: As matrizes precisam ter as mesmas dimensões (C é 3x2, D é 2x3).\n");
+}
+
+// Tentativa de Produto C * D
+printf("\nVerificando Produto (C * D)...\n");
+if (colsC == rowsD) {
+    printf("O produto é possível. Calculando...\n");
+    // Cálculo do produto 3x3
+    ProdCD[0,0] = (C[0,0] * D[0,0]) + (C[0,1] * D[1,0]);
+    ProdCD[0,1] = (C[0,0] * D[0,1]) + (C[0,1] * D[1,1]);
+    ProdCD[0,2] = (C[0,0] * D[0,2]) + (C[0,1] * D[1,2]);
+
+    ProdCD[1,0] = (C[1,0] * D[0,0]) + (C[1,1] * D[1,0]);
+    ProdCD[1,1] = (C[1,0] * D[0,1]) + (C[1,1] * D[1,1]);
+    ProdCD[1,2] = (C[1,0] * D[0,2]) + (C[1,1] * D[1,2]);
+
+    ProdCD[2,0] = (C[2,0] * D[0,0]) + (C[2,1] * D[1,0]);
+    ProdCD[2,1] = (C[2,0] * D[0,1]) + (C[2,1] * D[1,1]);
+    ProdCD[2,2] = (C[2,0] * D[0,2]) + (C[2,1] * D[1,2]);
+
+    printf("Resultado do Produto (matriz 3x3):\n");
+    printf("[ %.0f, %.0f, %.0f ]\n", ProdCD[0,0], ProdCD[0,1], ProdCD[0,2]);
+    printf("[ %.0f, %.0f, %.0f ]\n", ProdCD[1,0], ProdCD[1,1], ProdCD[1,2]);
+    printf("[ %.0f, %.0f, %.0f ]\n", ProdCD[2,0], ProdCD[2,1], ProdCD[2,2]);
+} else {
+    // Este bloco não será executado
+    printf("IMPOSSIVEL MULTIPLICAR.\n");
+}
+
+printf("\n--- Fim dos Testes ---\n");

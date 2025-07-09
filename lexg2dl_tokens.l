@@ -67,6 +67,7 @@
 "int"                      { return INT; }
 "float"                    { return FLOAT; }
 "string"                   { return STRING; }
+"matrix"                   { return MATRIX; }
 
 [0-9]+\.[0-9]+             { yylval.floatVal = atof(yytext); return FLOAT_LITERAL; }
 [0-9]+                     { yylval.intVal = atoi(yytext); return INTEGER; }

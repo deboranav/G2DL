@@ -17,6 +17,8 @@ typedef struct Symbol {
     char *name;          // Nome da variável (chave)
     DataType type;       // Tipo da variável (ex: TYPE_INT, TYPE_FLOAT)
     struct Symbol *next; // Próximo nó na lista (em caso de colisão)
+    int rows; // colunas
+    int cols; // linhas
 } Symbol;
 
 // A própria tabela hash (um array de ponteiros para Symbol)
@@ -36,6 +38,8 @@ Symbol* add_symbol(const char *name, DataType type);
 
 // Procura por um símbolo na tabela pelo nome.
 Symbol* lookup_symbol(const char *name);
+
+Symbol* add_matrix_symbol(const char *name, int rows, int cols);
 
 // Libera toda a memória alocada pela tabela de símbolos.
 void free_symbol_table_memory();

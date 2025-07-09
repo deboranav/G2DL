@@ -24,9 +24,8 @@ void init_symbol_table() {
         hash_table[i] = NULL;
     }
     
-    // Inicializa a lista para iteração
     symbol_count = 0;
-    symbol_list_capacity = 20; // Define uma capacidade inicial
+    symbol_list_capacity = 20;
     symbol_list = malloc(symbol_list_capacity * sizeof(Symbol*));
     if (!symbol_list) {
         perror("Falha ao alocar a lista de símbolos");
@@ -38,26 +37,16 @@ void init_symbol_table() {
 Symbol* lookup_symbol(const char *name) {
     unsigned int index = hash(name);
     Symbol *current = hash_table[index];
-
     while (current != NULL) {
         if (strcmp(current->name, name) == 0) {
-            return current; // Símbolo encontrado
+            return current;
         }
         current = current->next;
     }
-    return NULL; // Símbolo não encontrado
+    return NULL;
 }
 
-// Adiciona um novo símbolo à tabela (se ele ainda não existir)
 Symbol* add_symbol(const char *name, DataType type) {
-    Symbol *existing_symbol = lookup_symbol(name);
-    if (existing_symbol != NULL) {
-        // Se o símbolo já existe, apenas retorna o ponteiro para ele.
-        // Não fazemos nada, pois só precisamos do registro do nome e tipo.
-        return existing_symbol;
-    }
-
-    // Se não existe, cria um novo símbolo
     unsigned int index = hash(name);
     Symbol *new_symbol = (Symbol*) malloc(sizeof(Symbol));
     if (!new_symbol) {
@@ -71,14 +60,13 @@ Symbol* add_symbol(const char *name, DataType type) {
         exit(EXIT_FAILURE);
     }
     new_symbol->type = type;
+    new_symbol->rows = 0;
+    new_symbol->cols = 0;
 
-    // Adiciona o novo símbolo no início da lista encadeada (bucket)
     new_symbol->next = hash_table[index];
     hash_table[index] = new_symbol;
 
-    // Adiciona o ponteiro para o novo símbolo na nossa lista de iteração
     if (symbol_count >= symbol_list_capacity) {
-        // Dobra a capacidade se a lista estiver cheia
         symbol_list_capacity *= 2;
         symbol_list = realloc(symbol_list, symbol_list_capacity * sizeof(Symbol*));
         if (!symbol_list) {
@@ -92,6 +80,44 @@ Symbol* add_symbol(const char *name, DataType type) {
     return new_symbol;
 }
 
+
+// FUNÇÃO PARA MATRIZES
+Symbol* add_matrix_symbol(const char *name, int rows, int cols) {
+    unsigned int index = hash(name);
+    Symbol *new_symbol = (Symbol*) malloc(sizeof(Symbol));
+    if (!new_symbol) {
+        perror("Erro ao alocar novo Symbol para matriz");
+        exit(EXIT_FAILURE);
+    }
+
+    new_symbol->name = strdup(name);
+    if (!new_symbol->name) {
+        perror("Erro ao alocar nome do Symbol");
+        exit(EXIT_FAILURE);
+    }
+    
+    new_symbol->type = TYPE_MATRIX;
+    new_symbol->rows = rows;
+    new_symbol->cols = cols;
+
+    new_symbol->next = hash_table[index];
+    hash_table[index] = new_symbol;
+
+    if (symbol_count >= symbol_list_capacity) {
+        symbol_list_capacity *= 2;
+        symbol_list = realloc(symbol_list, symbol_list_capacity * sizeof(Symbol*));
+        if (!symbol_list) {
+            perror("Falha ao realocar a lista de símbolos");
+            exit(EXIT_FAILURE);
+        }
+    }
+    symbol_list[symbol_count] = new_symbol;
+    symbol_count++;
+
+    return new_symbol;
+}
+
+
 // Retorna o número total de símbolos únicos
 int get_symbol_count() {
     return symbol_count;
@@ -102,24 +128,22 @@ Symbol* get_symbol_by_index(int index) {
     if (index >= 0 && index < symbol_count) {
         return symbol_list[index];
     }
-    return NULL; // Índice fora dos limites
+    return NULL;
 }
 
 // Libera toda a memória alocada pela tabela e pela lista
 void free_symbol_table_memory() {
-    // Libera a memória da tabela hash
     for (int i = 0; i < HASH_TABLE_SIZE; i++) {
         Symbol *current = hash_table[i];
         while (current != NULL) {
             Symbol *temp = current;
             current = current->next;
-            free(temp->name); // Libera a string do nome
-            free(temp);       // Libera o nó do símbolo
+            free(temp->name);
+            free(temp);
         }
         hash_table[i] = NULL;
     }
     
-    // Libera a memória da lista de iteração
     if (symbol_list != NULL) {
         free(symbol_list);
         symbol_list = NULL;
