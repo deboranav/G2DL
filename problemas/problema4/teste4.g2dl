@@ -1,0 +1,64 @@
+// ------------------------------------------------------------------
+// Arquivo: teste_final.lang
+// Objetivo: Testar as funcionalidades de Tipos Compostos e Funções.
+// ------------------------------------------------------------------
+
+// --- Definição de Tipos e Funções (Escopo Global) ---
+
+// 1. TESTE: Definição de um novo tipo de dado composto.
+// O tradutor deve gerar uma 'struct rational_t { ... };' em C.
+type rational_t {
+    numerador;  // Por simplificação, todos os membros são 'double'
+    denominador;
+};
+
+// 2. TESTE: Definição de uma função simples.
+// O tradutor deve gerar uma função 'void' em C.
+function saudacao_inicial() {
+    printf("--- Teste Completo do Compilador Iniciado ---\n");
+    printf("Testando a definição de tipos, declaração e acesso a membros.\n\n");
+}
+
+
+// --- Corpo Principal do Programa ---
+
+// 3. TESTE: Chamada de função.
+saudacao_inicial();
+
+// 4. TESTE: Declaração de variáveis do novo tipo 'rational_t'.
+// O tradutor deve gerar 'struct rational_t r1;' e 'struct rational_t r2;'.
+printf("Declarando duas variáveis do tipo rational_t: r1 e r2...\n");
+rational_t r1;
+rational_t r2;
+rational_t soma; // Variável para guardar o resultado da soma
+
+// 5. TESTE: Atribuição a membros de uma struct.
+// O tradutor deve gerar 'r1.numerador = 5;' etc.
+printf("Atribuindo r1 = 5/8 e r2 = 1/4...\n");
+r1.numerador = 5;
+r1.denominador = 8;
+r2.numerador = 1;
+r2.denominador = 4;
+
+// 6. TESTE: Leitura de membros de uma struct em expressões.
+printf("Valores atribuidos:\n");
+printf("r1 = %.0f/%.0f\n", r1.numerador, r1.denominador);
+printf("r2 = %.0f/%.0f\n", r2.numerador, r2.denominador);
+
+// 7. TESTE: Realizando uma operação com os membros.
+printf("\nCalculando a soma r1 + r2...\n");
+// Lógica da soma: (a/b) + (c/d) = (ad + cb) / bd
+soma.numerador = (r1.numerador * r2.denominador) + (r2.numerador * r1.denominador);
+soma.denominador = r1.denominador * r2.denominador;
+printf("Resultado da soma guardado em 'soma'.\n");
+printf("Soma = %.0f/%.0f\n", soma.numerador, soma.denominador);
+
+// 8. TESTE: Verificação de erro semântico (comentado).
+// O código abaixo, se descomentado, deve causar um erro no seu compilador,
+// provando que a verificação de redeclaração está funcionando.
+/*
+    printf("\nTestando erro de redeclaracao...\n");
+    rational_t r1; // ERRO: Esta linha deve fazer o compilador parar.
+*/
+
+printf("\n--- Testes concluidos com sucesso! ---\n");

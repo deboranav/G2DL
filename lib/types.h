@@ -10,6 +10,18 @@ typedef enum {
     TYPE_STRING,
     TYPE_MATRIX,
     TYPE_FUNCTION,
+    TYPE_STRUCT,
 } DataType;
+// Struct interna do parser para passar os blocos de código de forma limpa.
+typedef struct CodeBlocks {
+    char* structs;
+    char* funcs;
+    char* main;
+} CodeBlocks;
+
+typedef struct TypeInfo {
+    char* c_typename;
+    DataType type_enum;
+} TypeInfo;
 
 #endif // TYPES_H

@@ -60,6 +60,7 @@
 "}"                      { return RIGHT_CURLY_BRACKET; }
 
 ","                        { return COMMA; }
+"."                        { return DOT; }
 ":"                        { return COLON; }
 ";"                        { return ';'; }
 
@@ -68,6 +69,7 @@
 "float"                    { return FLOAT; }
 "string"                   { return STRING; }
 "matrix"                   { return MATRIX; }
+"type"                     { return TYPE_DEF; }
 
 [0-9]+\.[0-9]+             { yylval.floatVal = atof(yytext); return FLOAT_LITERAL; }
 [0-9]+                     { yylval.intVal = atoi(yytext); return INTEGER; }
