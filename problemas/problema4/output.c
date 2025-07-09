@@ -47,15 +47,13 @@ struct rational_t multiplicacao(struct rational_t r1, struct rational_t r2) {
 
 struct rational_t nega(struct rational_t r) {
     struct rational_t res_nega;
+    res_nega.numerador = (-r.numerador);
     res_nega.denominador = r.denominador;
     return res_nega;
     }
 
 
 int main() {
-    // Variáveis locais da main (escalares)
-    double sao_diferentes;
-
     printf("--- Testando Subprogramas de Racionais com Funções Tipadas ---\n");
     struct rational_t r1;
     struct rational_t r2;

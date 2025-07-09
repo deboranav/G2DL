@@ -18,7 +18,6 @@ char *main_body_code = NULL;
 
 UserType* current_type_definition = NULL;
 
-void declare_variables(FILE *file);
 
 extern int yylineno;
 extern FILE *yyin;
@@ -214,15 +213,13 @@ declaration:
         if (lookup_symbol($2) != NULL) { char err[256]; sprintf(err, "Erro Semântico: Variável '%s' já declarada.", $2); yyerror(err); YYABORT; }
         if ($1.type_enum == TYPE_STRUCT) { add_struct_variable_symbol($2, $1.c_typename); } 
         else { add_symbol($2, $1.type_enum); }
-        // Não gera mais código C aqui. Retorna uma string vazia.
-        $$ = strdup(""); 
+        asprintf(&$$, "    %s %s;\n", $1.c_typename, $2); // Gera o código de declaração
         free($1.c_typename); free($2);
     }
     | MATRIX ID LEFT_SQUARE_BRACKET INTEGER COMMA INTEGER RIGHT_SQUARE_BRACKET 
     {
         if (lookup_symbol($2) != NULL) { char err[256]; sprintf(err, "Erro Semântico: Variável '%s' já declarada.", $2); yyerror(err); YYABORT; }
         add_matrix_symbol($2, $4, $6); 
-        // Gera a declaração da matriz diretamente, pois é um caso especial.
         asprintf(&$$, "    double %s[%d][%d];\n", $2, $4, $6);
         free($2);
     }
@@ -270,30 +267,15 @@ argument_list:
     ;
 
 assignment:
-    variable ASSIGNMENT expression 
-    { 
-        if (lookup_symbol($1) == NULL) { add_symbol($1, TYPE_UNKNOWN); }
-        asprintf(&$$, "    %s = %s;\n", $1, $3); 
-        free($1); free($3); 
-    }
-    | matrix_access ASSIGNMENT expression 
-    { 
-        asprintf(&$$, "    %s = %s;\n", $1, $3); 
-        free($1); free($3); 
-    }
-    | variable DOT ID ASSIGNMENT expression 
-    { 
-        asprintf(&$$, "    %s.%s = %s;\n", $1, $3, $5); 
-        free($1); free($3); free($5); 
-    }
-    | variable PLUS_ASSIGNMENT expression 
-    { 
+    variable ASSIGNMENT expression { 
         if (lookup_symbol($1) == NULL) { 
-            char err[256]; sprintf(err, "Erro Semântico: Variável '%s' não declarada.", $1); yyerror(err); YYABORT; 
-        } 
-        asprintf(&$$, "    %s += %s;\n", $1, $3); 
-        free($1); free($3); 
+            char err[256]; sprintf(err, "Erro Semântico: Variável '%s' não declarada.", $1); yyerror(err); YYABORT;
+        }
+        asprintf(&$$, "    %s = %s;\n", $1, $3); free($1); free($3); 
     }
+    | matrix_access ASSIGNMENT expression { asprintf(&$$, "    %s = %s;\n", $1, $3); free($1); free($3); }
+    | variable DOT ID ASSIGNMENT expression { asprintf(&$$, "    %s.%s = %s;\n", $1, $3, $5); free($1); free($3); free($5); }
+    | variable PLUS_ASSIGNMENT expression { if (lookup_symbol($1) == NULL) { char err[256]; sprintf(err, "Erro Semântico: Variável '%s' não declarada.", $1); yyerror(err); YYABORT; } asprintf(&$$, "    %s += %s;\n", $1, $3); free($1); free($3); }
     ;
 
 /* --- Regras de Expressão --- */
@@ -310,7 +292,7 @@ expression:
     | FALSE                         { $$ = strdup("0"); }
     | INPUT LEFT_PARENTHESIS RIGHT_PARENTHESIS { $$ = strdup("runtime_input_c()"); }
     | LEFT_PARENTHESIS expression RIGHT_PARENTHESIS { $$ = $2; }
-    | MINUS expression %prec UMINUS     { asprintf(&$$, "(-%s)", $2); free($2); }
+    | MINUS expression %prec UMINUS { asprintf(&$$, "(-%s)", $2); free($2); }
     | expression PLUS expression          { asprintf(&$$, "(%s + %s)", $1, $3); free($1); free($3); }
     | expression MINUS expression         { asprintf(&$$, "(%s - %s)", $1, $3); free($1); free($3); }
     | expression MULTIPLY expression      { asprintf(&$$, "(%s * %s)", $1, $3); free($1); free($3); }
@@ -397,29 +379,6 @@ void yyerror(const char *msg) {
     fprintf(stderr, "Erro na linha %d: %s\n", yylineno, msg);
 }
 
-void declare_variables(FILE* file) {
-    fprintf(file, "    // Variáveis locais da main (escalares)\n");
-    for (int i = 0; i < get_symbol_count(); i++) {
-        Symbol *sym = get_symbol_by_index(i);
-        if (sym) {
-            // Não declara variáveis que são de tipos complexos ou funções
-            if (sym->type != TYPE_FUNCTION && sym->type != TYPE_MATRIX && sym->type != TYPE_STRUCT) {
-                // E também não declara as globais de comunicação
-                if (strcmp(sym->name, "arg1_r") != 0 && strcmp(sym->name, "arg2_r") != 0 && 
-                    strcmp(sym->name, "retorno_r") != 0 && strcmp(sym->name, "arg_int1") != 0 &&
-                    strcmp(sym->name, "arg_int2") != 0 && strcmp(sym->name, "ret_bool") != 0)
-                {
-                    if (sym->type == TYPE_STRING) {
-                         fprintf(file, "    char* %s;\n", sym->name);
-                    } else {
-                         fprintf(file, "    double %s;\n", sym->name);
-                    }
-                }
-            }
-        }
-    }
-    fprintf(file, "\n");
-}
 
 int main(int argc, char *argv[]) {
     #if YYDEBUG
@@ -461,8 +420,6 @@ int main(int argc, char *argv[]) {
         }
         
         fprintf(final_output_file, "\nint main() {\n");
-        
-        declare_variables(final_output_file);
         
         if (main_body_code) { 
             fprintf(final_output_file, "%s", main_body_code); 
