@@ -1,18 +1,20 @@
 %{
+#define _GNU_SOURCE // Ativa extensões GNU, como asprintf
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <stdarg.h>
 
-#include "types.h"
-#include "symbol_table.h"
+#include "lib/types.h"
+#include "lib/symbol_table.h"
 
 int yylex(void);
 void yyerror(const char *s);
-void my_printf_runtime(char *format_string, ArgumentNode *args_list);
-void free_argument_list(ArgumentNode *list);
-RuntimeValue runtime_input();
+
+// Variável global para armazenar o corpo do código C gerado
+char *generated_code_body = NULL; 
+
+void declare_variables(FILE *file);
 
 extern int yylineno;
 extern FILE *yyin;
@@ -24,8 +26,6 @@ extern FILE *yyin;
     int intVal;
     float floatVal;
     char *strVal;
-    RuntimeValue runtimeVal;
-    ArgumentNode *argList;
 }
 
 %token FUNCTION RETURN BREAK IF ELSE WHILE FOR TRUE FALSE
@@ -43,9 +43,8 @@ extern FILE *yyin;
 %token PRINTF
 %token INPUT
 
-%type <runtimeVal> expression
-%type <strVal> variable
-%type <argList> argument_list_printf
+%type <strVal> expression assignment variable block statements statement control_structure printf_statement
+%type <strVal> argument_list_printf
 
 %left OR
 %left AND
@@ -62,304 +61,136 @@ extern FILE *yyin;
 
 %%
 
+// A gramática inteira agora constrói uma única string.
 program:
-    statements
-    | /* vazio */
+    statements { generated_code_body = $1; }
     ;
 
 statements:
-    statement
-    | statements statement
+    /* vazio */ { $$ = strdup(""); }
+    | statements statement {
+        if ($2) {
+            asprintf(&$$, "%s%s", $1, $2);
+            free($1);
+            free($2);
+        } else {
+            $$ = $1; 
+        }
+    }
     ;
 
 statement:
-    function_decl
-    | assignment ';'
-    | expression ';'
-    | control_structure
-    | RETURN expression ';' { printf("Retornando valor (tipo %d): ", $2.type);
-                                 if ($2.type == TYPE_INT) printf("%d\n", $2.data.intVal);
-                                 else if ($2.type == TYPE_FLOAT) printf("%f\n", $2.data.floatVal);
-                                 else if ($2.type == TYPE_STRING) printf("%s\n", $2.data.strVal);
-                                 if ($2.type == TYPE_STRING && $2.data.strVal) free($2.data.strVal);
-                               }
-    | printf_statement
-    | block
-    | error ';' { fprintf(stderr, "Erro de sintaxe na linha %d. Tentando recuperar em ';'\n", yylineno); yyerrok; }
+    assignment ';'          { $$ = $1; }
+    | expression ';'          { asprintf(&$$, "    %s;\n", $1); free($1); }
+    | control_structure     { $$ = $1; }
+    | printf_statement      { $$ = $1; }
+    | block                 { $$ = $1; }
+    | error ';'             { 
+                              fprintf(stderr, "Erro de sintaxe na linha %d. Tentando recuperar em ';'\n", yylineno);
+                              yyerrok;
+                              $$ = NULL; 
+                            }
     ;
 
+// Regras de 'printf' corrigidas para gerar C válido
 printf_statement:
+    // Caso: printf("string literal", args...)
     PRINTF LEFT_PARENTHESIS STRING_LITERAL COMMA argument_list_printf RIGHT_PARENTHESIS ';'
     {
-        my_printf_runtime($3, $5);
+        asprintf(&$$, "    printf(%s, %s);\n", $3, $5);
         free($3);
-        free_argument_list($5);
+        free($5);
     }
+    // Caso: printf("string literal")
     | PRINTF LEFT_PARENTHESIS STRING_LITERAL RIGHT_PARENTHESIS ';'
     {
-        my_printf_runtime($3, NULL);
-        free($3);
-    }
-    | PRINTF LEFT_PARENTHESIS ID RIGHT_PARENTHESIS ';'
-    {
-
-        Symbol *sym = lookup_symbol($3);
-
-        if (sym != NULL) {
-            char *temp_format = NULL;
-            ArgumentNode *arg_list_temp = NULL;
-
-            arg_list_temp = (ArgumentNode*) malloc(sizeof(ArgumentNode));
-            if (!arg_list_temp) {
-                perror("Erro ao alocar ArgumentNode para printf(ID)");
-                exit(EXIT_FAILURE);
-            }
-            arg_list_temp->value = sym->value; 
-            arg_list_temp->next = NULL;
-
-            if (arg_list_temp->value.type == TYPE_STRING && arg_list_temp->value.data.strVal != NULL) {
-                arg_list_temp->value.data.strVal = strdup(arg_list_temp->value.data.strVal);
-            }
-
-            if (sym->value.type == TYPE_INT) {
-                temp_format = strdup("%d\n");
-            } else if (sym->value.type == TYPE_FLOAT) {
-                temp_format = strdup("%f\n");
-            } else if (sym->value.type == TYPE_STRING) {
-                temp_format = strdup("%s\n");
-            } else {
-                fprintf(stderr, "Erro de runtime: printf(ID) com tipo de variável não suportado.\n");
-                temp_format = strdup("Tipo desconhecido para ID.\n");
-            }
-
-            if (temp_format) {
-                my_printf_runtime(temp_format, arg_list_temp);
-                free(temp_format);
-            }
-            free_argument_list(arg_list_temp);
-        } else {
-            fprintf(stderr, "Erro de runtime: Variável '%s' não definida na linha %d para printf.\n", $3, yylineno);
-            yyerror("Variável não definida em printf()");
-        }
+        asprintf(&$$, "    printf(%s);\n", $3);
         free($3);
     }
     ;
 
 argument_list_printf:
-    expression { $$ = (ArgumentNode *)malloc(sizeof(ArgumentNode));
-                 if (!$$) { perror("malloc"); exit(EXIT_FAILURE); }
-                 $$->value = $1;
-                 $$->next = NULL;
-               }
+    expression { $$ = $1; }
     | argument_list_printf COMMA expression {
-                     ArgumentNode *newNode = (ArgumentNode *)malloc(sizeof(ArgumentNode));
-                     if (!newNode) { perror("malloc"); exit(EXIT_FAILURE); }
-                     newNode->value = $3;
-                     newNode->next = NULL;
-                     ArgumentNode *current = $1;
-                     while (current->next != NULL) {
-                         current = current->next;
-                     }
-                     current->next = newNode;
-                     $$ = $1;
-                   }
-    ;
-
-function_decl:
-    FUNCTION ID LEFT_PARENTHESIS parameters RIGHT_PARENTHESIS block
-    ;
-
-parameters:
-    /* vazio */
-    | parameter_list
-    ;
-
-parameter_list:
-    ID
-    | parameter_list COMMA ID
+        asprintf(&$$, "%s, %s", $1, $3);
+        free($1);
+        free($3);
+    }
     ;
 
 block:
     LEFT_CURLY_BRACKET statements RIGHT_CURLY_BRACKET
+    {
+        asprintf(&$$, "{\n%s    }\n", $2);
+        free($2);
+    }
     ;
 
 assignment:
-    variable assignment_operator expression {
-        printf("Atribuição para a variável %s. Valor: ", $1);
-        if ($3.type == TYPE_INT) printf("%d\n", $3.data.intVal);
-        else if ($3.type == TYPE_FLOAT) printf("%f\n", $3.data.floatVal);
-        else if ($3.type == TYPE_STRING) printf("%s\n", $3.data.strVal);
-        printf("\n");
-
-        insert_symbol($1, $3);
-
+    variable ASSIGNMENT expression {
+        add_symbol($1, TYPE_UNKNOWN);
+        asprintf(&$$, "    %s = %s;\n", $1, $3);
         free($1);
+        free($3);
     }
-    | array_access assignment_operator expression
-    ;
-
-assignment_operator:
-    ASSIGNMENT
-    | PLUS_ASSIGNMENT
-    | MINUS_ASSIGNMENT
-    | MULTIPLY_ASSIGNMENT
-    | DIVIDE_ASSIGNMENT
-    | MOD_ASSIGNMENT
-    | POWER_ASSIGNMENT
+    | variable PLUS_ASSIGNMENT expression {
+        add_symbol($1, TYPE_UNKNOWN);
+        asprintf(&$$, "    %s += %s;\n", $1, $3);
+        free($1);
+        free($3);
+    }
     ;
 
 expression:
-    INTEGER                     { $$ = (RuntimeValue){.type = TYPE_INT, .data.intVal = $1}; }
-    | FLOAT_LITERAL             { $$ = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = $1}; }
-    | STRING_LITERAL            { $$ = (RuntimeValue){.type = TYPE_STRING, .data.strVal = $1}; }
-    | variable                  {
-        printf("Usando variável %s\n", $1);
-        Symbol *sym = lookup_symbol($1);
-        if (sym != NULL) {
-            $$ = sym->value;
-            if ($$.type == TYPE_STRING && $$.data.strVal != NULL) {
-                $$.data.strVal = strdup($$.data.strVal);
-            }
-        } else {
-            fprintf(stderr, "Erro de runtime: Variável '%s' não definida na linha %d.\n", $1, yylineno);
-            yyerror("Variável não definida");
-            $$ = (RuntimeValue){.type = TYPE_INT, .data.intVal = 0};
-        }
-        free($1);
-    }
-    | function_call             { $$ = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = 0.0}; }
-    | array_access              { $$ = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = 0.0}; }
-    | array_literal             { $$ = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = 0.0}; }
-    | TRUE                      { $$ = (RuntimeValue){.type = TYPE_INT, .data.intVal = 1}; }
-    | FALSE                     { $$ = (RuntimeValue){.type = TYPE_INT, .data.intVal = 0}; }
+    INTEGER                     { asprintf(&$$, "%d", $1); }
+    | FLOAT_LITERAL             { asprintf(&$$, "%f", $1); }
+    | STRING_LITERAL            { $$ = $1; }
+    | variable                  { $$ = $1; }
+    | TRUE                      { $$ = strdup("1"); }
+    | FALSE                     { $$ = strdup("0"); }
     | INPUT LEFT_PARENTHESIS RIGHT_PARENTHESIS {
-        printf("Chamada de input(). Aguardando entrada...\n");
-        $$ = runtime_input();
+        $$ = strdup("runtime_input_c()");
     }
-    | expression PLUS expression          {
-        float val1 = ($1.type == TYPE_INT) ? (float)$1.data.intVal : $1.data.floatVal;
-        float val2 = ($3.type == TYPE_INT) ? (float)$3.data.intVal : $3.data.floatVal;
-        $$ = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = val1 + val2};
-    }
-    | expression MINUS expression         {
-        float val1 = ($1.type == TYPE_INT) ? (float)$1.data.intVal : $1.data.floatVal;
-        float val2 = ($3.type == TYPE_INT) ? (float)$3.data.intVal : $3.data.floatVal;
-        $$ = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = val1 - val2};
-    }
-    | expression MULTIPLY expression      {
-        float val1 = ($1.type == TYPE_INT) ? (float)$1.data.intVal : $1.data.floatVal;
-        float val2 = ($3.type == TYPE_INT) ? (float)$3.data.intVal : $3.data.floatVal;
-        $$ = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = val1 * val2};
-    }
-    | expression DIVIDE expression        {
-        float val1 = ($1.type == TYPE_INT) ? (float)$1.data.intVal : $1.data.floatVal;
-        float val2 = ($3.type == TYPE_INT) ? (float)$3.data.intVal : $3.data.floatVal;
-        if(val2 != 0) $$ = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = val1 / val2};
-        else { yyerror("Divisão por zero"); $$ = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = 0.0}; }
-    }
-    | expression MOD expression           {
-        int val1 = ($1.type == TYPE_FLOAT) ? (int)$1.data.floatVal : $1.data.intVal;
-        int val2 = ($3.type == TYPE_FLOAT) ? (int)$3.data.floatVal : $3.data.intVal;
-        if(val2 != 0) $$ = (RuntimeValue){.type = TYPE_INT, .data.intVal = val1 % val2};
-        else { yyerror("Modulo por zero"); $$ = (RuntimeValue){.type = TYPE_INT, .data.intVal = 0}; }
-    }
-    | expression POWER expression         {
-        float val1 = ($1.type == TYPE_INT) ? (float)$1.data.intVal : $1.data.floatVal;
-        float val2 = ($3.type == TYPE_INT) ? (float)$3.data.intVal : $3.data.floatVal;
-        $$ = (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = pow(val1, val2)};
-    }
-    | expression EQUAL expression         {
-        if ($1.type == TYPE_FLOAT || $3.type == TYPE_FLOAT) {
-            float val1 = ($1.type == TYPE_INT) ? (float)$1.data.intVal : $1.data.floatVal;
-            float val2 = ($3.type == TYPE_INT) ? (float)$3.data.intVal : $3.data.floatVal;
-            $$ = (RuntimeValue){.type = TYPE_INT, .data.intVal = (val1 == val2)};
-        } else {
-            $$ = (RuntimeValue){.type = TYPE_INT, .data.intVal = ($1.data.intVal == $3.data.intVal)};
-        }
-    }
-    | expression NOT_EQUAL expression     {
-        if ($1.type == TYPE_FLOAT || $3.type == TYPE_FLOAT) {
-            float val1 = ($1.type == TYPE_INT) ? (float)$1.data.intVal : $1.data.floatVal;
-            float val2 = ($3.type == TYPE_INT) ? (float)$3.data.intVal : $3.data.floatVal;
-            $$ = (RuntimeValue){.type = TYPE_INT, .data.intVal = (val1 != val2)};
-        } else {
-            $$ = (RuntimeValue){.type = TYPE_INT, .data.intVal = ($1.data.intVal != $3.data.intVal)};
-        }
-    }
-    | expression LESS_THAN expression     {
-        float val1 = ($1.type == TYPE_INT) ? (float)$1.data.intVal : $1.data.floatVal;
-        float val2 = ($3.type == TYPE_INT) ? (float)$3.data.intVal : $3.data.floatVal;
-        $$ = (RuntimeValue){.type = TYPE_INT, .data.intVal = (val1 < val2)};
-    }
-    | expression GREATER_THAN expression  {
-        float val1 = ($1.type == TYPE_INT) ? (float)$1.data.intVal : $1.data.floatVal;
-        float val2 = ($3.type == TYPE_INT) ? (float)$3.data.intVal : $3.data.floatVal;
-        $$ = (RuntimeValue){.type = TYPE_INT, .data.intVal = (val1 > val2)};
-    }
-    | expression LESS_THAN_OR_EQUAL expression {
-        float val1 = ($1.type == TYPE_INT) ? (float)$1.data.intVal : $1.data.floatVal;
-        float val2 = ($3.type == TYPE_INT) ? (float)$3.data.intVal : $3.data.floatVal;
-        $$ = (RuntimeValue){.type = TYPE_INT, .data.intVal = (val1 <= val2)};
-    }
-    | expression GREATER_THAN_OR_EQUAL expression {
-        float val1 = ($1.type == TYPE_INT) ? (float)$1.data.intVal : $1.data.floatVal;
-        float val2 = ($3.type == TYPE_INT) ? (float)$3.data.intVal : $3.data.floatVal;
-        $$ = (RuntimeValue){.type = TYPE_INT, .data.intVal = (val1 >= val2)};
-    }
-    | expression AND expression           {
-        int val1 = ($1.type == TYPE_FLOAT) ? (int)$1.data.floatVal : $1.data.intVal;
-        int val2 = ($3.type == TYPE_FLOAT) ? (int)$3.data.floatVal : $3.data.intVal;
-        $$ = (RuntimeValue){.type = TYPE_INT, .data.intVal = (val1 && val2)};
-    }
-    | expression OR expression            {
-        int val1 = ($1.type == TYPE_FLOAT) ? (int)$1.data.floatVal : $1.data.intVal;
-        int val2 = ($3.type == TYPE_FLOAT) ? (int)$3.data.floatVal : $3.data.intVal;
-        $$ = (RuntimeValue){.type = TYPE_INT, .data.intVal = (val1 || val2)};
-    }
-    | NOT expression                      {
-        int val2 = ($2.type == TYPE_FLOAT) ? (int)$2.data.floatVal : $2.data.intVal;
-        $$ = (RuntimeValue){.type = TYPE_INT, .data.intVal = !val2};
-    }
+    | expression PLUS expression          { asprintf(&$$, "(%s + %s)", $1, $3); free($1); free($3); }
+    | expression MINUS expression         { asprintf(&$$, "(%s - %s)", $1, $3); free($1); free($3); }
+    | expression MULTIPLY expression      { asprintf(&$$, "(%s * %s)", $1, $3); free($1); free($3); }
+    | expression DIVIDE expression        { asprintf(&$$, "(%s / %s)", $1, $3); free($1); free($3); }
+    | expression MOD expression           { asprintf(&$$, "((int)%s %% (int)%s)", $1, $3); free($1); free($3); }
+    | expression POWER expression         { asprintf(&$$, "pow(%s, %s)", $1, $3); free($1); free($3); }
+    | expression EQUAL expression         { asprintf(&$$, "(%s == %s)", $1, $3); free($1); free($3); }
+    | expression NOT_EQUAL expression     { asprintf(&$$, "(%s != %s)", $1, $3); free($1); free($3); }
+    | expression LESS_THAN expression     { asprintf(&$$, "(%s < %s)", $1, $3); free($1); free($3); }
+    | expression GREATER_THAN expression  { asprintf(&$$, "(%s > %s)", $1, $3); free($1); free($3); }
+    | expression LESS_THAN_OR_EQUAL expression { asprintf(&$$, "(%s <= %s)", $1, $3); free($1); free($3); }
+    | expression GREATER_THAN_OR_EQUAL expression { asprintf(&$$, "(%s >= %s)", $1, $3); free($1); free($3); }
+    | expression AND expression           { asprintf(&$$, "(%s && %s)", $1, $3); free($1); free($3); }
+    | expression OR expression            { asprintf(&$$, "(%s || %s)", $1, $3); free($1); free($3); }
+    | NOT expression                      { asprintf(&$$, "(!%s)", $2); free($2); }
     | LEFT_PARENTHESIS expression RIGHT_PARENTHESIS { $$ = $2; }
-    ;
-
-
-array_literal:
-    LEFT_SQUARE_BRACKET array_elements_non_empty RIGHT_SQUARE_BRACKET
-    ;
-
-array_elements_non_empty:
-    expression
-    | array_elements_non_empty COMMA expression
     ;
 
 variable:
     ID { $$ = $1; }
     ;
 
-array_access:
-    ID LEFT_SQUARE_BRACKET expression RIGHT_SQUARE_BRACKET
-    ;
-
-function_call:
-    ID LEFT_PARENTHESIS argument_list RIGHT_PARENTHESIS
-    ;
-
-argument_list:
-    /* vazio */
-    | argument_list_non_empty
-    ;
-
-argument_list_non_empty:
-    expression
-    | argument_list_non_empty COMMA expression
-    ;
-
 control_structure:
-    IF expression block %prec THEN
-    | IF expression block ELSE block
-    | WHILE expression block
-    | FOR LEFT_PARENTHESIS INT ID COLON function_call RIGHT_PARENTHESIS block
+    IF LEFT_PARENTHESIS expression RIGHT_PARENTHESIS block {
+        asprintf(&$$, "    if (%s) %s", $3, $5);
+        free($3); free($5);
+    }
+    | IF LEFT_PARENTHESIS expression RIGHT_PARENTHESIS block ELSE statement {
+        if ($7) {
+            asprintf(&$$, "    if (%s) %s else %s", $3, $5, $7);
+            free($7);
+        } else {
+            asprintf(&$$, "    if (%s) %s", $3, $5);
+        }
+        free($3); free($5);
+    }
+    | WHILE LEFT_PARENTHESIS expression RIGHT_PARENTHESIS block {
+        asprintf(&$$, "    while (%s) %s", $3, $5);
+        free($3); free($5);
+    }
     ;
 
 %%
@@ -368,139 +199,19 @@ void yyerror(const char *msg) {
     fprintf(stderr, "Erro na linha %d: %s\n", yylineno, msg);
 }
 
-void my_printf_runtime(char *format_string, ArgumentNode *args_list) {
-    char *p = format_string;
-    ArgumentNode *current_arg = args_list;
-
-    if (p[0] == '"' || p[0] == '\'') {
-        p++;
-    }
-    size_t len = strlen(format_string);
-    char *end_p = format_string + len;
-    if (len > 0 && (*(end_p - 1) == '"' || *(end_p - 1) == '\'')) {
-        end_p--;
-    }
-
-
-    while (p < end_p && *p != '\0') {
-        if (*p == '%' && *(p+1) != '\0') {
-            p++;
-
-            if (*p == '%') {
-                printf("%%");
-                p++;
-                continue;
-            }
-
-            if (current_arg == NULL) {
-                fprintf(stderr, "Erro de runtime: Número insuficiente de argumentos para printf.\n");
-                break;
-            }
-
-            switch (*p) {
-                case 'd':
-                    if (current_arg->value.type == TYPE_INT) {
-                        printf("%d", current_arg->value.data.intVal);
-                    } else if (current_arg->value.type == TYPE_FLOAT) {
-                        printf("%d", (int)current_arg->value.data.floatVal);
-                    } else {
-                        fprintf(stderr, "Erro de runtime: tipo inesperado para %%d (esperado INT/FLOAT, recebido %d).\n", current_arg->value.type);
-                        printf("[TIPO_ERRADO]");
-                    }
-                    break;
-                case 'f':
-                    if (current_arg->value.type == TYPE_FLOAT) {
-                        printf("%f", current_arg->value.data.floatVal);
-                    } else if (current_arg->value.type == TYPE_INT) {
-                        printf("%f", (float)current_arg->value.data.intVal);
-                    }
-                    else {
-                        fprintf(stderr, "Erro de runtime: tipo inesperado para %%f (esperado FLOAT/INT, recebido %d).\n", current_arg->value.type);
-                        printf("[TIPO_ERRADO]");
-                    }
-                    break;
-                case 's':
-                    if (current_arg->value.type == TYPE_STRING) {
-                        char *temp_str = strdup(current_arg->value.data.strVal);
-                        if (temp_str) {
-                            if (strlen(temp_str) >= 2 && (temp_str[0] == '"' || temp_str[0] == '\'') && (temp_str[strlen(temp_str)-1] == '"' || temp_str[strlen(temp_str)-1] == '\'')) {
-                                memmove(temp_str, temp_str + 1, strlen(temp_str) - 2);
-                                temp_str[strlen(temp_str) - 2] = '\0';
-                            }
-                            printf("%s", temp_str);
-                            free(temp_str);
-                        } else {
-                            printf("[ERRO_STRING]");
-                        }
-                    } else {
-                        fprintf(stderr, "Erro de runtime: tipo inesperado para %%s (esperado STRING, recebido %d).\n", current_arg->value.type);
-                        printf("[TIPO_ERRADO]");
-                    }
-                    break;
-                default:
-                    fprintf(stderr, "Aviso de runtime: Especificador de formato desconhecido: %c\n", *p);
-                    printf("%%%c", *p);
-                    break;
-            }
-            current_arg = current_arg->next;
-        } else if (*p == '\\' && *(p+1) != '\0') {
-            p++;
-            switch (*p) {
-                case 'n': printf("\n"); break;
-                case 't': printf("\t"); break;
-                case '\\': printf("\\"); break;
-                case '"': printf("\""); break;
-                case '\'': printf("\'"); break;
-                default: printf("\\%c", *p); break;
+void declare_variables(FILE* file) {
+    fprintf(file, "    // Variáveis inferidas pelo tradutor\n");
+    for (int i = 0; i < get_symbol_count(); i++) {
+        Symbol *sym = get_symbol_by_index(i);
+        if (sym) {
+            if (sym->type == TYPE_STRING) {
+                 fprintf(file, "    char* %s = NULL;\n", sym->name);
+            } else {
+                 fprintf(file, "    double %s;\n", sym->name);
             }
         }
-        else {
-            printf("%c", *p);
-        }
-        p++;
     }
-
-    if (current_arg != NULL) {
-        fprintf(stderr, "Aviso de runtime: Argumentos extras fornecidos para printf.\n");
-    }
-}
-
-
-void free_argument_list(ArgumentNode *list) {
-    ArgumentNode *temp;
-    while (list != NULL) {
-        temp = list;
-        if (temp->value.type == TYPE_STRING && temp->value.data.strVal) {
-            free(temp->value.data.strVal);
-        }
-        list = list->next;
-        free(temp);
-    }
-}
-
-RuntimeValue runtime_input() {
-    char buffer[256];
-    printf("> ");
-    if (fgets(buffer, sizeof(buffer), stdin) != NULL) {
-        buffer[strcspn(buffer, "\n")] = 0;
-
-        char *endptr;
-
-        long int_candidate = strtol(buffer, &endptr, 10);
-        if (*endptr == '\0' && endptr != buffer) {
-            return (RuntimeValue){.type = TYPE_INT, .data.intVal = (int)int_candidate};
-        }
-
-        float float_candidate = strtof(buffer, &endptr);
-        if (*endptr == '\0' && endptr != buffer) {
-            return (RuntimeValue){.type = TYPE_FLOAT, .data.floatVal = float_candidate};
-        }
-
-        return (RuntimeValue){.type = TYPE_STRING, .data.strVal = strdup(buffer)};
-    }
-
-    fprintf(stderr, "Erro ao ler input ou EOF alcançado.\n");
-    return (RuntimeValue){.type = TYPE_INT, .data.intVal = 0};
+    fprintf(file, "\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -508,27 +219,64 @@ int main(int argc, char *argv[]) {
         yydebug = 1;
     #endif
 
-    init_symbol_table();
-
     if (argc > 1) {
-        FILE *file = fopen(argv[1], "r");
-        if (!file) {
+        yyin = fopen(argv[1], "r");
+        if (!yyin) {
             perror(argv[1]);
             return 1;
         }
-        yyin = file;
     } else {
         yyin = stdin;
     }
 
-    if (yyparse() == 0) {
-        printf("Análise concluída com sucesso.\n");
-        return 0;
+    init_symbol_table();
+    
+    int result = yyparse();
+
+    if (result == 0 && generated_code_body != NULL) {
+        FILE* final_output_file = fopen("output.c", "w");
+        if (!final_output_file) {
+            perror("Não foi possível criar o arquivo de saída output.c");
+            if (generated_code_body) free(generated_code_body);
+            return 1;
+        }
+
+        // Ordem correta de escrita no arquivo final:
+        // 1. Cabeçalhos
+        fprintf(final_output_file, "#include <stdio.h>\n");
+        fprintf(final_output_file, "#include <stdlib.h>\n");
+        fprintf(final_output_file, "#include <string.h>\n");
+        fprintf(final_output_file, "#include <math.h>\n\n");
+        
+        // 2. Definição da função de input auxiliar
+        fprintf(final_output_file, "double runtime_input_c() {\n");
+        fprintf(final_output_file, "    char buffer[256];\n");
+        fprintf(final_output_file, "    if (fgets(buffer, sizeof(buffer), stdin) != NULL) {\n");
+        fprintf(final_output_file, "        return atof(buffer);\n");
+        fprintf(final_output_file, "    }\n");
+        fprintf(final_output_file, "    return 0.0;\n}\n\n");
+        
+        fprintf(final_output_file, "int main() {\n");
+        
+        // 3. Declarações de variáveis (no topo do main)
+        declare_variables(final_output_file);
+        
+        // 4. Corpo do código traduzido
+        fprintf(final_output_file, "%s", generated_code_body);
+        
+        // 5. Fechamento do main
+        fprintf(final_output_file, "\n    return 0;\n}\n");
+        
+        fclose(final_output_file);
+        printf("Tradução concluída com sucesso. Verifique o arquivo output.c\n");
+
     } else {
-        printf("Análise falhou.\n");
-        return 1;
+        printf("A tradução falhou devido a erros de sintaxe ou código vazio.\n");
     }
 
+    if (generated_code_body) free(generated_code_body);
+    if (yyin != stdin) fclose(yyin);
     free_symbol_table_memory();
-    return 0;
+
+    return result;
 }

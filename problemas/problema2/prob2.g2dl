@@ -23,7 +23,7 @@ while (num >= 0) {
 
 
 printf("Resultados:\n");
-printf("Numeros no intervalo [0, 25]: "); printf(count0_25); printf("\n");
-printf("Numeros no intervalo [26, 50]: "); printf(count26_50); printf("\n");
-printf("Numeros no intervalo [51, 75]: "); printf(count51_75); printf("\n");
-printf("Numeros no intervalo [76, 100]: "); printf(count76_100); printf("\n");
+printf("Numeros no intervalo [0, 25]: %.0f\n", count0_25);
+printf("Numeros no intervalo [26, 50]: %.0f\n", count26_50);
+printf("Numeros no intervalo [51, 75]: %.0f\n", count51_75);
+printf("Numeros no intervalo [76, 100]: %.0f\n", count76_100);
