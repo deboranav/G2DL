@@ -4,4 +4,4 @@ c = 4;
 
 d = x ** 2 - y + c;
 
-printf(d);
+printf("%f\n", d);
