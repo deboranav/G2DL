@@ -3,7 +3,7 @@
 ### Passo 1:
 
 ```bash
-$ make
+$ make clean && make
 ```
 O Make gera um "compiler_g2dl" na pasta "problemas", basta copia-lo para a pasta do problema a ser testado.
 
