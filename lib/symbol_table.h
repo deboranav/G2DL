@@ -1,5 +1,3 @@
-// symbol_table.h
-
 #ifndef SYMBOL_TABLE_H
 #define SYMBOL_TABLE_H
 
@@ -10,55 +8,53 @@
 
 #define HASH_TABLE_SIZE 101
 
-// --- ESTRUTURAS PARA O NOVO SISTEMA DE TIPOS ---
+// --- ESTRUTURAS DE DADOS ---
+// A ordem aqui é importante para evitar erros de "tipo desconhecido".
 
-// Representa um membro dentro de uma struct (ex: o campo 'numerador')
 typedef struct Member {
     char *name;
     DataType type;
     struct Member *next;
 } Member;
 
-// Representa um tipo definido pelo usuário (ex: a struct 'rational_t')
 typedef struct UserType {
     char *name;
     Member *members;
     struct UserType *next;
 } UserType;
 
-// --- ESTRUTURA UNIFICADA PARA SÍMBOLOS (VARIÁVEIS) ---
 typedef struct Symbol {
     char *name;
-    DataType type;      // Será TYPE_FLOAT, TYPE_FUNCTION, TYPE_MATRIX, ou TYPE_STRUCT
-    char *typeName;     // Se type == TYPE_STRUCT, aqui guardamos o nome do tipo (ex: "rational_t")
-    int rows;           // Para matrizes
-    int cols;           // Para matrizes
+    DataType type;
+    char *typeName;
+    int rows;
+    int cols;
     struct Symbol *next;
 } Symbol;
 
-extern Symbol *hash_table[HASH_TABLE_SIZE];
+typedef struct Scope {
+    Symbol* hash_table[HASH_TABLE_SIZE];
+    struct Scope* parent;
+} Scope;
 
 
-// --- PROTÓTIPOS DE FUNÇÕES ---
+// --- INTERFACE PÚBLICA DO MÓDULO ---
 
-// Funções da Tabela de Símbolos (Variáveis)
-void init_symbol_table();
-Symbol* lookup_symbol(const char *name);
-Symbol* add_symbol(const char *name, DataType type); // Para escalares
-Symbol* add_matrix_symbol(const char *name, int rows, int cols); // Para matrizes
-Symbol* add_struct_variable_symbol(const char *name, const char *typeName); // Para structs
-void free_symbol_table_memory();
-int get_symbol_count();
-Symbol* get_symbol_by_index(int index);
+void scope_init();
+void scope_enter();
+void scope_leave();
 
-// Funções da Tabela de Tipos (Structs)
-void init_type_table();
+// MUDANÇA: Assinatura da função corrigida para aceitar todos os dados necessários.
+void scope_add_symbol(const char *name, DataType type, const char* typeName, int rows, int cols);
+
+Symbol* scope_lookup(const char *name);
+Symbol* scope_lookup_current(const char *name);
+void free_all_scopes();
+
+// Funções da Tabela de Tipos
 UserType* define_type(const char *typeName);
-void add_member_to_type(UserType* type, const char *memberName, DataType memberType);
 UserType* lookup_type(const char *typeName);
-void free_type_table_memory();
-// Adicione um protótipo para obter a lista de tipos se precisar iterar
+void add_member_to_type(UserType* type, const char *memberName, DataType memberType);
 UserType* get_type_table_head();
-
 
 #endif // SYMBOL_TABLE_H

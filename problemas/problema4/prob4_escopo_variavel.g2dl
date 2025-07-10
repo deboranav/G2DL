@@ -1,52 +1,55 @@
 // ------------------------------------------------------------------
 // Programa: Resolução do Problema dos Números Racionais
-// Versão: Final, com Funções, Parâmetros e Tipos Compostos
+// Versão: Final, com sintaxe de tipos completa
 // ------------------------------------------------------------------
 
-// Definição do tipo de dado
+// Definição de tipo com membros tipados
 type rational_t {
-    numerador;
-    denominador;
+    float numerador;
+    float denominador;
 };
 
-// --- Subprogramas ---
+// --- Subprogramas com assinaturas de função tipadas ---
 
 // A) Cria e retorna um rational_t
-function cria_racional(num, den) {
-    rational_t novo;
+function rational_t cria_racional(float num, float den) {
+    rational_t novo_r;
     if (den == 0) {
         printf("Erro: Denominador não pode ser zero. Retornando 0/1.\n");
-        novo.numerador = 0;
-        novo.denominador = 1;
+        novo_r.numerador = 0;
+        novo_r.denominador = 1;
     } else {
-        novo.numerador = num;
-        novo.denominador = den;
+        novo_r.numerador = num;
+        novo_r.denominador = den;
     }
-    return novo;
+    return novo_r;
 }
 
-// B) Compara dois racionais
-function sao_iguais(r1, r2) {
-    // a/b == c/d  se  a*d == c*b
-    return (r1.numerador * r2.denominador) == (r2.numerador * r1.denominador);
+// B) Compara dois racionais, retorna um float (1.0 para true, 0.0 para false)
+function float sao_iguais(rational_t r1, rational_t r2) {
+    if ((r1.numerador * r2.denominador) == (r2.numerador * r1.denominador)) {
+        return 1.0;
+    } else {
+        return 0.0;
+    }
 }
 
 // C) Operações Aritméticas
-function soma(r1, r2) {
+function rational_t soma(rational_t r1, rational_t r2) {
     rational_t res;
     res.numerador = (r1.numerador * r2.denominador) + (r2.numerador * r1.denominador);
     res.denominador = r1.denominador * r2.denominador;
     return res;
 }
 
-function multiplicacao(r1, r2) {
+function rational_t multiplicacao(rational_t r1, rational_t r2) {
     rational_t res;
     res.numerador = r1.numerador * r2.numerador;
     res.denominador = r1.denominador * r2.denominador;
     return res;
 }
 
-function nega(r) {
+function rational_t nega(rational_t r) {
     rational_t res;
     res.numerador = -r.numerador;
     res.denominador = r.denominador;
@@ -55,11 +58,13 @@ function nega(r) {
 
 // --- Programa Principal ---
 
-printf("--- Testando Subprogramas de Racionais com Funções ---\n");
+printf("--- Testando Subprogramas de Racionais com Funções Tipadas ---\n");
 
+// Declarações de variáveis
 rational_t r1;
 rational_t r2;
 rational_t r3;
+float resultado_comparacao;
 
 printf("\nCriando racionais r1=3/4 e r2=1/2...\n");
 r1 = cria_racional(3, 4);
@@ -68,7 +73,8 @@ printf("r1 = %.0f/%.0f\n", r1.numerador, r1.denominador);
 printf("r2 = %.0f/%.0f\n", r2.numerador, r2.denominador);
 
 printf("\nTestando igualdade...\n");
-if (sao_iguais(r1, r2) == 1) {
+resultado_comparacao = sao_iguais(r1, r2);
+if (resultado_comparacao == 1.0) {
     printf("r1 e r2 são iguais.\n");
 } else {
     printf("r1 e r2 são diferentes.\n");

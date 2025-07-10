@@ -11,13 +11,13 @@
 int yylex(void);
 void yyerror(const char *s);
 
-// Variáveis globais que serão preenchidas UMA VEZ no final da análise.
+// Variáveis globais preenchidas uma única vez no final da análise.
 char *struct_definitions_code = NULL;
 char *function_definitions_code = NULL;
 char *main_body_code = NULL;
 
+// Variável global para auxiliar na criação de tipos
 UserType* current_type_definition = NULL;
-
 
 extern int yylineno;
 extern FILE *yyin;
@@ -29,8 +29,8 @@ extern FILE *yyin;
     int         intVal;
     float       floatVal;
     char* strVal;
-    CodeBlocks  code_blocks; 
-    TypeInfo    type_info;
+    CodeBlocks* code_blocks; // Usar ponteiros é mais seguro
+    TypeInfo* type_info;
 }
 
 /* --- Tokens --- */
@@ -38,11 +38,9 @@ extern FILE *yyin;
 %token INT STRING FLOAT 
 %token MATRIX 
 %token TYPE_DEF DOT
-
 %token <strVal> ID STRING_LITERAL
 %token <intVal> INTEGER
 %token <floatVal> FLOAT_LITERAL
-
 %token ASSIGNMENT PLUS MINUS MULTIPLY DIVIDE MOD POWER
 %token EQUAL NOT_EQUAL LESS_THAN GREATER_THAN LESS_THAN_OR_EQUAL GREATER_THAN_OR_EQUAL
 %token AND OR NOT
@@ -57,14 +55,13 @@ extern FILE *yyin;
 %type <code_blocks> source_file_content
 
 %type <strVal> expression assignment variable block statements statement control_structure printf_statement
-%type <strVal> argument_list_printf declaration matrix_access function_definition function_call
+%type <strVal> declaration matrix_access function_definition function_call
 %type <strVal> return_statement param_list member_list type_definition argument_list
-
 %type <strVal> member_decl param_decl
+
 %type <type_info> type_specifier
 
-
-/* --- Precedência e Associatividade dos Operadores --- */
+/* --- Precedência e Associatividade --- */
 %left OR
 %left AND
 %left EQUAL NOT_EQUAL
@@ -81,65 +78,76 @@ extern FILE *yyin;
 
 %%
 
-/* --- Gramática Principal --- */
+/*==================================================================
+ * GRAMÁTICA PRINCIPAL E ESTRUTURA DO ARQUIVO
+ *==================================================================*/
 
 program:
     source_file_content 
     {
-        struct_definitions_code = $1.structs;
-        function_definitions_code = $1.funcs;
-        main_body_code = $1.main;
+        if ($1) {
+            struct_definitions_code = $1->structs;
+            function_definitions_code = $1->funcs;
+            main_body_code = $1->main;
+            free($1); // Libera a struct CodeBlocks
+        }
     }
     ;
 
 source_file_content:
     /* Vazio: inicializa a struct com strings vazias */
     {
-        $$.structs = strdup("");
-        $$.funcs = strdup("");
-        $$.main = strdup("");
+        $$ = (CodeBlocks*) malloc(sizeof(CodeBlocks));
+        $$->structs = strdup("");
+        $$->funcs = strdup("");
+        $$->main = strdup("");
     }
     | source_file_content type_definition 
     {
-        $$.funcs = $1.funcs;
-        $$.main = $1.main;
-        asprintf(&$$.structs, "%s%s", $1.structs, $2);
-        free($1.structs);
+        $$ = $1;
+        char* temp = NULL;
+        asprintf(&temp, "%s%s", $$->structs, $2);
+        free($$->structs);
         free($2);
+        $$->structs = temp;
     }
     | source_file_content function_definition 
     {
-        $$.structs = $1.structs;
-        $$.main = $1.main;
-        asprintf(&$$.funcs, "%s%s", $1.funcs, $2);
-        free($1.funcs);
+        $$ = $1;
+        char* temp = NULL;
+        asprintf(&temp, "%s%s", $$->funcs, $2);
+        free($$->funcs);
         free($2);
+        $$->funcs = temp;
     }
     | source_file_content statement 
     {
-        $$.structs = $1.structs;
-        $$.funcs = $1.funcs;
+        $$ = $1;
         if ($2) {
-            asprintf(&$$.main, "%s%s", $1.main, $2);
-            free($1.main);
+            char* temp = NULL;
+            asprintf(&temp, "%s%s", $$->main, $2);
+            free($$->main);
             free($2);
-        } else {
-            $$.main = $1.main; 
+            $$->main = temp;
         }
     }
     ;
 
+/*==================================================================
+ * BLOCOS E COMANDOS (STATEMENTS)
+ *==================================================================*/
+
 statements:
     /* vazio */ { $$ = strdup(""); }
     | statements statement 
-    {
+    { 
         if ($2) { 
             asprintf(&$$, "%s%s", $1, $2); 
             free($1); 
             free($2); 
         } else { 
             $$ = $1; 
-        }
+        } 
     }
     ;
 
@@ -151,7 +159,7 @@ statement:
     | printf_statement      { $$ = $1; }
     | block                 { $$ = $1; }
     | return_statement      { $$ = $1; }
-    | error ';'             { fprintf(stderr, "Erro de sintaxe na linha %d\n", yylineno); yyerrok; $$ = NULL; }
+    | error ';'             { yyerror("Erro de sintaxe. Ignorando até ';'"); $$ = NULL; }
     ;
 
 return_statement:
@@ -162,35 +170,49 @@ return_statement:
     }
     ;
 
-/* --- Regras de Definição de Tipos, Funções, etc. --- */
+block: 
+    LEFT_CURLY_BRACKET { scope_enter(); } statements RIGHT_CURLY_BRACKET { scope_leave(); }
+    { 
+        asprintf(&$$, "{\n%s    }\n", $3); 
+        free($3); 
+    }
+    ;
+
+/*==================================================================
+ * DEFINIÇÕES E DECLARAÇÕES
+ *==================================================================*/
 
 type_specifier:
-    FLOAT   { $$.c_typename = strdup("double"); $$.type_enum = TYPE_FLOAT; }
-    | INT     { $$.c_typename = strdup("int");    $$.type_enum = TYPE_INT; }
-    | STRING  { $$.c_typename = strdup("char*");  $$.type_enum = TYPE_STRING; }
+    FLOAT   { $$ = (TypeInfo*) malloc(sizeof(TypeInfo)); $$->c_typename = strdup("double"); $$->type_enum = TYPE_FLOAT; }
+    | INT     { $$ = (TypeInfo*) malloc(sizeof(TypeInfo)); $$->c_typename = strdup("int");    $$->type_enum = TYPE_INT; }
+    | STRING  { $$ = (TypeInfo*) malloc(sizeof(TypeInfo)); $$->c_typename = strdup("char*");  $$->type_enum = TYPE_STRING; }
     | ID      
     { 
-        if (lookup_type($1) == NULL) { 
-            char err[256]; sprintf(err, "Erro Semântico: Tipo '%s' não definido.", $1); yyerror(err); YYABORT; 
-        }
-        asprintf(&$$.c_typename, "struct %s", $1); 
-        $$.type_enum = TYPE_STRUCT;
+        if (lookup_type($1) == NULL) { char err[256]; sprintf(err, "Tipo '%s' não definido.", $1); yyerror(err); YYABORT; }
+        $$ = (TypeInfo*) malloc(sizeof(TypeInfo));
+        asprintf(&$$->c_typename, "struct %s", $1); 
+        $$->type_enum = TYPE_STRUCT;
         free($1);
     }
     ;
 
 type_definition:
-    TYPE_DEF ID LEFT_CURLY_BRACKET member_list RIGHT_CURLY_BRACKET ';' 
+    TYPE_DEF ID 
     {
         if (lookup_type($2) != NULL) { 
             char err[256]; sprintf(err, "Erro Semântico: Tipo '%s' já definido.", $2); yyerror(err); YYABORT; 
         }
-        current_type_definition = define_type($2);
-        asprintf(&$$, "struct %s {\n%s};\n\n", $2, $4);
-        free($2); free($4);
-        current_type_definition = NULL;
+        current_type_definition = define_type($2); 
+        if (!current_type_definition) { yyerror("Falha ao definir tipo"); YYABORT; }
     }
-    ;
+    LEFT_CURLY_BRACKET { scope_enter(); } member_list RIGHT_CURLY_BRACKET { scope_leave(); } ';' 
+    {
+        asprintf(&$$, "struct %s {\n%s};\n\n", current_type_definition->name, $6);
+        free($2); 
+        free($6);
+        current_type_definition = NULL; // Limpa ao final da definição completa.
+    }
+;
 
 member_list:
     /* vazio */ { $$ = strdup(""); }
@@ -200,40 +222,43 @@ member_list:
 member_decl:
     type_specifier ID ';' 
     {
-        if (current_type_definition != NULL) { add_member_to_type(current_type_definition, $2, $1.type_enum); }
-        asprintf(&$$, "    %s %s;\n", $1.c_typename, $2);
-        free($1.c_typename); // Libera a string dentro da struct
+        add_member_to_type(current_type_definition, $2, $1->type_enum); 
+
+        asprintf(&$$, "   %s %s;\n", $1->c_typename, $2);
+        free($1->c_typename); free($1);
         free($2);
     }
-    ;
+;
 
 declaration:
     type_specifier ID 
     {
-        if (lookup_symbol($2) != NULL) { char err[256]; sprintf(err, "Erro Semântico: Variável '%s' já declarada.", $2); yyerror(err); YYABORT; }
-        if ($1.type_enum == TYPE_STRUCT) { add_struct_variable_symbol($2, $1.c_typename); } 
-        else { add_symbol($2, $1.type_enum); }
-        asprintf(&$$, "    %s %s;\n", $1.c_typename, $2); // Gera o código de declaração
-        free($1.c_typename); free($2);
+        if (scope_lookup_current($2) != NULL) { /* ... erro ... */ }
+        scope_add_symbol($2, $1->type_enum, ($1->type_enum == TYPE_STRUCT) ? $1->c_typename : NULL, 0, 0);
+        asprintf(&$$, "    %s %s;\n", $1->c_typename, $2);
+        free($1->c_typename); free($1); free($2);
     }
     | MATRIX ID LEFT_SQUARE_BRACKET INTEGER COMMA INTEGER RIGHT_SQUARE_BRACKET 
     {
-        if (lookup_symbol($2) != NULL) { char err[256]; sprintf(err, "Erro Semântico: Variável '%s' já declarada.", $2); yyerror(err); YYABORT; }
-        add_matrix_symbol($2, $4, $6); 
+        if (scope_lookup_current($2) != NULL) { /* ... erro ... */ }
+        scope_add_symbol($2, TYPE_MATRIX, NULL, $4, $6); 
         asprintf(&$$, "    double %s[%d][%d];\n", $2, $4, $6);
         free($2);
     }
     ;
 
+/*==================================================================
+ * FUNÇÕES E CHAMADAS
+ *==================================================================*/
+
 function_definition:
-    FUNCTION type_specifier ID LEFT_PARENTHESIS param_list RIGHT_PARENTHESIS block 
+    FUNCTION type_specifier ID LEFT_PARENTHESIS { scope_enter(); } param_list RIGHT_PARENTHESIS block { scope_leave(); }
     {
-        if (lookup_symbol($3) != NULL) { 
-            char err[256]; sprintf(err, "Erro Semântico: Função '%s' já declarada.", $3); yyerror(err); YYABORT; 
-        }
-        add_symbol($3, TYPE_FUNCTION);
-        asprintf(&$$, "%s %s(%s) %s\n", $2.c_typename, $3, $5, $7);
-        free($2.c_typename); free($3); free($5); free($7);
+        if (scope_lookup_current($3) != NULL) { char err[256]; sprintf(err, "Função '%s' já declarada.", $3); yyerror(err); YYABORT; }
+        scope_add_symbol($3, TYPE_FUNCTION, NULL, 0, 0);
+        asprintf(&$$, "%s %s(%s) %s\n", $2->c_typename, $3, $6, $8);
+        free($2->c_typename); free($2);
+        free($3); free($6); free($8);
     }
     ;
 
@@ -244,13 +269,15 @@ param_list:
     ;
 
 param_decl:
-    type_specifier ID { 
-        asprintf(&$$, "%s %s", $1.c_typename, $2); 
-        free($1.c_typename); 
+    type_specifier ID 
+    { 
+        scope_add_symbol($2, $1->type_enum, ($1->type_enum == TYPE_STRUCT) ? $1->c_typename : NULL, 0, 0);
+        asprintf(&$$, "%s %s", $1->c_typename, $2); 
+        free($1->c_typename); free($1);
         free($2); 
     }
     ;
-
+    
 function_call:
     ID LEFT_PARENTHESIS argument_list RIGHT_PARENTHESIS 
     { 
@@ -266,19 +293,29 @@ argument_list:
     | argument_list COMMA expression { asprintf(&$$, "%s, %s", $1, $3); free($1); free($3); }
     ;
 
+/*==================================================================
+ * ATRIBUIÇÕES E EXPRESSÕES
+ *==================================================================*/
+
 assignment:
     variable ASSIGNMENT expression { 
-        if (lookup_symbol($1) == NULL) { 
+        if (scope_lookup($1) == NULL) { 
             char err[256]; sprintf(err, "Erro Semântico: Variável '%s' não declarada.", $1); yyerror(err); YYABORT;
         }
         asprintf(&$$, "    %s = %s;\n", $1, $3); free($1); free($3); 
     }
-    | matrix_access ASSIGNMENT expression { asprintf(&$$, "    %s = %s;\n", $1, $3); free($1); free($3); }
-    | variable DOT ID ASSIGNMENT expression { asprintf(&$$, "    %s.%s = %s;\n", $1, $3, $5); free($1); free($3); free($5); }
-    | variable PLUS_ASSIGNMENT expression { if (lookup_symbol($1) == NULL) { char err[256]; sprintf(err, "Erro Semântico: Variável '%s' não declarada.", $1); yyerror(err); YYABORT; } asprintf(&$$, "    %s += %s;\n", $1, $3); free($1); free($3); }
+    | matrix_access ASSIGNMENT expression 
+    { 
+        asprintf(&$$, "    %s = %s;\n", $1, $3); 
+        free($1); free($3); 
+    }
+    | variable DOT ID ASSIGNMENT expression 
+    { 
+        if (scope_lookup($1) == NULL) { char err[256]; sprintf(err, "Variável '%s' não declarada.", $1); yyerror(err); YYABORT; }
+        asprintf(&$$, "    %s.%s = %s;\n", $1, $3, $5); 
+        free($1); free($3); free($5); 
+    }
     ;
-
-/* --- Regras de Expressão --- */
 
 expression:
     INTEGER                         { asprintf(&$$, "%d", $1); }
@@ -292,7 +329,7 @@ expression:
     | FALSE                         { $$ = strdup("0"); }
     | INPUT LEFT_PARENTHESIS RIGHT_PARENTHESIS { $$ = strdup("runtime_input_c()"); }
     | LEFT_PARENTHESIS expression RIGHT_PARENTHESIS { $$ = $2; }
-    | MINUS expression %prec UMINUS { asprintf(&$$, "(-%s)", $2); free($2); }
+    | MINUS expression %prec UMINUS     { asprintf(&$$, "(-%s)", $2); free($2); }
     | expression PLUS expression          { asprintf(&$$, "(%s + %s)", $1, $3); free($1); free($3); }
     | expression MINUS expression         { asprintf(&$$, "(%s - %s)", $1, $3); free($1); free($3); }
     | expression MULTIPLY expression      { asprintf(&$$, "(%s * %s)", $1, $3); free($1); free($3); }
@@ -323,7 +360,7 @@ matrix_access:
     ;
     
 printf_statement:
-    PRINTF LEFT_PARENTHESIS STRING_LITERAL COMMA argument_list_printf RIGHT_PARENTHESIS ';' 
+    PRINTF LEFT_PARENTHESIS STRING_LITERAL COMMA argument_list RIGHT_PARENTHESIS ';' 
     { 
         asprintf(&$$, "    printf(%s, %s);\n", $3, $5); 
         free($3); free($5); 
@@ -335,18 +372,6 @@ printf_statement:
     }
     ;
 
-argument_list_printf:
-    expression { $$ = $1; }
-    | argument_list_printf COMMA expression { asprintf(&$$, "%s, %s", $1, $3); free($1); free($3); }
-    ;
-
-block: 
-    LEFT_CURLY_BRACKET statements RIGHT_CURLY_BRACKET 
-    { 
-        asprintf(&$$, "{\n%s    }\n", $2); 
-        free($2); 
-    }
-    ;
 
 control_structure: 
     IF LEFT_PARENTHESIS expression RIGHT_PARENTHESIS block 
@@ -373,12 +398,13 @@ control_structure:
 
 %%
 
-/* --- Seção de Código C Auxiliar --- */
+/*==================================================================
+ * SEÇÃO DE CÓDIGO C AUXILIAR
+ *==================================================================*/
 
 void yyerror(const char *msg) {
     fprintf(stderr, "Erro na linha %d: %s\n", yylineno, msg);
 }
-
 
 int main(int argc, char *argv[]) {
     #if YYDEBUG
@@ -392,7 +418,7 @@ int main(int argc, char *argv[]) {
         yyin = stdin; 
     }
 
-    init_symbol_table();
+    scope_init();
     
     int result = yyparse();
 
@@ -420,7 +446,7 @@ int main(int argc, char *argv[]) {
         }
         
         fprintf(final_output_file, "\nint main() {\n");
-        
+                
         if (main_body_code) { 
             fprintf(final_output_file, "%s", main_body_code); 
         }
@@ -438,7 +464,7 @@ int main(int argc, char *argv[]) {
     if (function_definitions_code) free(function_definitions_code);
     if (main_body_code) free(main_body_code);
     if (yyin != stdin) fclose(yyin);
-    free_symbol_table_memory();
+    free_all_scopes();
 
     return result;
 }
