@@ -74,7 +74,12 @@
 [0-9]+\.[0-9]+             { yylval.floatVal = atof(yytext); return FLOAT_LITERAL; }
 [0-9]+                     { yylval.intVal = atoi(yytext); return INTEGER; }
 
-\"([^\\\"]|\\.)*\"         { yylval.strVal = strdup(yytext); return STRING_LITERAL; }
+\"([^\\\"]|\\.)*\"         { 
+                            // Ignora a primeira e a última aspa
+                            yytext[yyleng-1] = '\0'; 
+                            yylval.strVal = strdup(yytext + 1); 
+                            return STRING_LITERAL; 
+                            }
 \'([^\\\']|\\.)*\'         { yylval.strVal = strdup(yytext); return STRING_LITERAL; }
 
 [_a-zA-Z][_a-zA-Z0-9]*     { yylval.strVal = strdup(yytext); return ID; }

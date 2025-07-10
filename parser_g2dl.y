@@ -55,7 +55,7 @@ extern FILE *yyin;
 %type <code_blocks> source_file_content
 
 %type <strVal> expression assignment variable block statements statement control_structure printf_statement
-%type <strVal> argument_list_printf declaration matrix_access function_definition function_call
+%type <strVal> declaration matrix_access function_definition function_call
 %type <strVal> return_statement param_list member_list type_definition argument_list
 %type <strVal> member_decl param_decl
 
@@ -197,19 +197,22 @@ type_specifier:
     ;
 
 type_definition:
-    TYPE_DEF ID LEFT_CURLY_BRACKET { scope_enter(); } member_list RIGHT_CURLY_BRACKET { scope_leave(); } ';' 
+    TYPE_DEF ID 
     {
         if (lookup_type($2) != NULL) { 
             char err[256]; sprintf(err, "Erro Semântico: Tipo '%s' já definido.", $2); yyerror(err); YYABORT; 
         }
-        // A chamada correta, com apenas 1 argumento.
-        // A regra 'member_list' já terá populado os membros.
-        current_type_definition = define_type($2);
-        asprintf(&$$, "struct %s {\n%s};\n\n", $2, $5);
-        free($2); free($5);
-        current_type_definition = NULL; // Limpa a variável global
+        current_type_definition = define_type($2); 
+        if (!current_type_definition) { yyerror("Falha ao definir tipo"); YYABORT; }
     }
-    ;
+    LEFT_CURLY_BRACKET { scope_enter(); } member_list RIGHT_CURLY_BRACKET { scope_leave(); } ';' 
+    {
+        asprintf(&$$, "struct %s {\n%s};\n\n", current_type_definition->name, $6);
+        free($2); 
+        free($6);
+        current_type_definition = NULL; // Limpa ao final da definição completa.
+    }
+;
 
 member_list:
     /* vazio */ { $$ = strdup(""); }
@@ -219,11 +222,13 @@ member_list:
 member_decl:
     type_specifier ID ';' 
     {
-        asprintf(&$$, "    %s %s;\n", $1->c_typename, $2);
+        add_member_to_type(current_type_definition, $2, $1->type_enum); 
+
+        asprintf(&$$, "   %s %s;\n", $1->c_typename, $2);
         free($1->c_typename); free($1);
         free($2);
     }
-    ;
+;
 
 declaration:
     type_specifier ID 
@@ -355,7 +360,7 @@ matrix_access:
     ;
     
 printf_statement:
-    PRINTF LEFT_PARENTHESIS STRING_LITERAL COMMA argument_list_printf RIGHT_PARENTHESIS ';' 
+    PRINTF LEFT_PARENTHESIS STRING_LITERAL COMMA argument_list RIGHT_PARENTHESIS ';' 
     { 
         asprintf(&$$, "    printf(%s, %s);\n", $3, $5); 
         free($3); free($5); 
@@ -367,10 +372,6 @@ printf_statement:
     }
     ;
 
-argument_list_printf:
-    expression { $$ = $1; }
-    | argument_list_printf COMMA expression { asprintf(&$$, "%s, %s", $1, $3); free($1); free($3); }
-    ;
 
 control_structure: 
     IF LEFT_PARENTHESIS expression RIGHT_PARENTHESIS block 

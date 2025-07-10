@@ -28,30 +28,28 @@ double sao_iguais(struct rational_t r1, struct rational_t r2) {
     if (((r1.numerador * r2.denominador) == (r2.numerador * r1.denominador))) {
     return 1.000000;
     }
- else {
     return 0.000000;
-    }
     }
 
 struct rational_t soma(struct rational_t r1, struct rational_t r2) {
-    struct rational_t res;
-    res.numerador = ((r1.numerador * r2.denominador) + (r2.numerador * r1.denominador));
-    res.denominador = (r1.denominador * r2.denominador);
-    return res;
+    struct rational_t res_soma;
+    res_soma.numerador = ((r1.numerador * r2.denominador) + (r2.numerador * r1.denominador));
+    res_soma.denominador = (r1.denominador * r2.denominador);
+    return res_soma;
     }
 
 struct rational_t multiplicacao(struct rational_t r1, struct rational_t r2) {
-    struct rational_t res;
-    res.numerador = (r1.numerador * r2.numerador);
-    res.denominador = (r1.denominador * r2.denominador);
-    return res;
+    struct rational_t res_mult;
+    res_mult.numerador = (r1.numerador * r2.numerador);
+    res_mult.denominador = (r1.denominador * r2.denominador);
+    return res_mult;
     }
 
 struct rational_t nega(struct rational_t r) {
-    struct rational_t res;
-    res.numerador = (-r.numerador);
-    res.denominador = r.denominador;
-    return res;
+    struct rational_t res_nega;
+    res_nega.numerador = (-r.numerador);
+    res_nega.denominador = r.denominador;
+    return res_nega;
     }
 
 
@@ -60,15 +58,15 @@ int main() {
     struct rational_t r1;
     struct rational_t r2;
     struct rational_t r3;
-    double resultado_comparacao;
+    double sao_diferentes;
     printf("\nCriando racionais r1=3/4 e r2=1/2...\n");
     r1 = cria_racional(3, 4);
     r2 = cria_racional(1, 2);
     printf("r1 = %.0f/%.0f\n", r1.numerador, r1.denominador);
     printf("r2 = %.0f/%.0f\n", r2.numerador, r2.denominador);
     printf("\nTestando igualdade...\n");
-    resultado_comparacao = sao_iguais(r1, r2);
-    if ((resultado_comparacao == 1.000000)) {
+    sao_diferentes = sao_iguais(r1, r2);
+    if ((sao_diferentes == 1.000000)) {
     printf("r1 e r2 são iguais.\n");
     }
  else {
