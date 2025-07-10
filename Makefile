@@ -14,7 +14,7 @@ Y_FILE = parser_g2dl.y
 L_C_FILE = $(L_FILE:.l=.yy.c)
 Y_C_FILE = $(Y_FILE:.y=.tab.c)
 Y_H_FILE = $(Y_FILE:.y=.tab.h)
-EXTRA_SRC = lib/symbol_table.c
+EXTRA_SRC = lib/symbol_table.c lib/ast.c lib/codegen.c
 
 # Regra principal
 all: $(TARGET)
