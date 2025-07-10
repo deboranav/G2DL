@@ -1,0 +1,64 @@
+// ------------------------------------------------------------------
+// Programa: Resolução do Problema 5 (MDC Recursivo)
+// Versão: Adaptada para a linguagem G2DL atual (com retorno de valor)
+// ------------------------------------------------------------------
+
+/*
+ * Subprograma mdc
+ * Calcula o Maior Divisor Comum de forma recursiva.
+ * Como a linguagem não suporta passagem por referência,
+ * o resultado é retornado diretamente pela função. 
+ */
+function float mdc(float n, float m) {
+    // A operação de módulo na linguagem é implementada com type cast para int.
+    // Ex: (int)m % (int)n
+    // O código gerado será ((int)%s %% (int)%s) [cite: 177]
+
+    // Caso base 1: Se n for um divisor de m, n é o MDC.
+    if (m % n == 0) {
+        return n;
+    }
+
+    // Caso base 2: Se m for um divisor de n, m é o MDC.
+    if (n % m == 0) {
+        return m;
+    }
+
+    // Passo recursivo: baseado no Algoritmo de Euclides
+    if (n > m) {
+        return mdc(m, n % m);
+    } else {
+        return mdc(n, m % n);
+    }
+}
+
+
+// --- Programa Principal ---
+
+printf("--- Calculo do Maior Divisor Comum (MDC) ---\n");
+
+// Declaração das variáveis.
+// A linguagem exige declarações explícitas. [cite: 133, 110]
+float num1;
+float num2;
+float resultado;
+
+// Leitura dos dados de entrada
+printf("Digite o primeiro numero natural: ");
+num1 = input(); // A função input() é traduzida para runtime_input_c() [cite: 170]
+
+printf("Digite o segundo numero natural: ");
+num2 = input();
+
+// Verifica se os números são estritamente positivos
+if (num1 <= 0 || num2 <= 0) {
+    printf("Erro: Os numeros devem ser estritamente positivos.\n");
+} else {
+    // Chama a função e atribui o valor retornado à variável 'resultado'.
+    resultado = mdc(num1, num2);
+
+    // Imprime o resultado obtido pela função.
+    printf("O Maior Divisor Comum entre %.0f e %.0f e: %.0f\n", num1, num2, resultado);
+}
+
+printf("\n--- Fim do Programa ---\n");
