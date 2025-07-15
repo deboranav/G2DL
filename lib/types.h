@@ -11,6 +11,7 @@ typedef enum {
     TYPE_MATRIX,
     TYPE_FUNCTION,
     TYPE_STRUCT,
+    TYPE_VOID,
 } DataType;
 // Struct interna do parser para passar os blocos de código de forma limpa.
 typedef struct CodeBlocks {

@@ -1,28 +1,20 @@
+/* Analise semantica iniciada... */
+/* Analise semantica concluida. */
+/* Tradução para C iniciada */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 
-double runtime_input_c() {
-    char buffer[256];
-    if (fgets(buffer, sizeof(buffer), stdin) != NULL) {
-        return atof(buffer);
-    }
-    return 0.0;
-}
+double runtime_input_c() { char b[256]; if(fgets(b,256,stdin)){return atof(b);} return 0.0; }
 
 int main() {
-    // Variáveis escalares inferidas pelo tradutor
-    double x;
-    double y;
-    double c;
-    double d;
-
-    x = 3.500000;
-    y = 1.200000;
-    c = 4;
-    d = ((pow(x, 2) - y) + c);
+    double x = runtime_input_c();
+    double y = runtime_input_c();
+    double c = runtime_input_c();
+    double d = ((pow(x, 2.000000) - y) + c);
     printf("%f\n", d);
 
     return 0;
 }
+/* Tradução concluída com sucesso. */

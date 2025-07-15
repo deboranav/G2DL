@@ -129,10 +129,6 @@ control_structure:
 assignment:
     variable ASSIGNMENT expression
     {
-        // A variável é um nó de identificador. Precisamos do seu nome.
-        if (scope_lookup($1->value.strVal) == NULL) {
-            scope_add_symbol($1->value.strVal, TYPE_FLOAT, NULL, 0, 0);
-        }
         $$ = new_ast_node(AST_ASSIGN, $1, $3);
     }
     ;
@@ -159,6 +155,7 @@ expression:
     | expression GREATER_THAN expression          { $$ = new_ast_node(AST_GT, $1, $3); }
     | expression LESS_THAN_OR_EQUAL expression    { $$ = new_ast_node(AST_LTE, $1, $3); }
     | expression GREATER_THAN_OR_EQUAL expression { $$ = new_ast_node(AST_GTE, $1, $3); }
+    | expression POWER expression                 { $$ = new_ast_node(AST_POW, $1, $3); }
     | expression AND expression                   { $$ = new_ast_node(AST_AND, $1, $3); }
     | expression OR expression                    { $$ = new_ast_node(AST_OR, $1, $3); }
     ;
@@ -226,11 +223,17 @@ int main(int argc, char *argv[]) {
     int result = yyparse();
 
     if (result == 0 && global_ast_root != NULL) {
+        printf("/* Analise semantica iniciada... */\n");
+    
+        // PASSO 1: Análise Semântica
+        analyze_semantics(global_ast_root);
+    
+        printf("/* Analise semantica concluida. */\n");
         printf("/* Tradução para C iniciada */\n");
-        
-        // A mágica acontece aqui: A AST é passada para o gerador de código
+
+        // PASSO 2: Geração de Código
         generate_code(global_ast_root);
-        
+    
         printf("/* Tradução concluída com sucesso. */\n");
 
         free_ast(global_ast_root); // Libera a memória da AST

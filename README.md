@@ -10,7 +10,7 @@ O Make gera um "compiler_g2dl" na pasta "problemas", basta copia-lo para a pasta
 ### Passo 2:
 
 ```bash
-$ ./compiler_g2dl probNum.g2dl
+$ ./compiler_g2dl probNum.g2dl > output.c
 ```
 
 

@@ -1,6 +1,6 @@
-x = 3.5;
-y = 1.2;
-c = 4;
+x = input();
+y = input();
+c = input();
 
 d = x ** 2 - y + c;
 

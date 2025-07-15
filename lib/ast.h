@@ -21,10 +21,12 @@ typedef enum {
     AST_GTE, // >=
     AST_AND,
     AST_OR,
+    AST_POW, // Exponenciação
 
     // Nós de Operações Unárias (ex: -a)
     AST_UMINUS, // Negativo unário
     AST_NOT,
+    
 
     // Nós de Comandos
     AST_ASSIGN,
@@ -50,7 +52,6 @@ typedef struct ASTNode {
     } value;
 
     // Filhos do nó. Para simplicidade, usaremos 2 para operações e 3 para if.
-    // Uma abordagem mais robusta usaria uma lista ligada de filhos.
     struct ASTNode *left;
     struct ASTNode *right;
     struct ASTNode *aux; // Usado para o "else", ou corpo do while, etc.
@@ -65,5 +66,6 @@ ASTNode* new_ast_leaf_id(char* name);
 ASTNode* new_ast_leaf_string(char* str);
 ASTNode* new_ast_if_node(ASTNode* condition, ASTNode* if_body, ASTNode* else_body);
 void free_ast(ASTNode* node);
+void analyze_semantics(ASTNode* node);
 
 #endif // AST_H
