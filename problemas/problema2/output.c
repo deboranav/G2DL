@@ -15,6 +15,27 @@ int main() {
     double count76_100 = 0.000000;
     printf("Digite um numero (um numero negativo encerra): ");
     double num = runtime_input_c();
+    while ((num >= 0.000000)) {
+        if (((num >= 0.000000) && (num <= 25.000000))) {
+            count0_25 = (count0_25 + 1.000000);
+
+        } else         if (((num >= 26.000000) && (num <= 50.000000))) {
+            count26_50 = (count26_50 + 1.000000);
+
+        } else         if (((num >= 51.000000) && (num <= 75.000000))) {
+            count51_75 = (count51_75 + 1.000000);
+
+        } else         if (((num >= 76.000000) && (num <= 100.000000))) {
+            count76_100 = (count76_100 + 1.000000);
+
+        }
+
+
+
+        printf("Digite um numero (um numero negativo encerra): ");
+        num = runtime_input_c();
+
+    }
     printf("Resultados:\n");
     printf("Numeros no intervalo [0, 25]: %.0f\n", count0_25);
     printf("Numeros no intervalo [26, 50]: %.0f\n", count26_50);

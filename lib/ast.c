@@ -5,6 +5,8 @@
 #include "types.h"
 #include "ast.h"
 
+extern int yylineno;
+
 // Função genérica para criar um nó
 ASTNode* new_ast_node(NodeType type, ASTNode* left, ASTNode* right) {
     ASTNode* node = (ASTNode*) malloc(sizeof(ASTNode));
@@ -49,6 +51,18 @@ ASTNode* new_ast_if_node(ASTNode* condition, ASTNode* if_body, ASTNode* else_bod
     return node;
 }
 
+ASTNode* new_ast_matrix_decl_node(char* name, ASTNode* rows, ASTNode* cols) { // <<< ADICIONADO
+    ASTNode* node = new_ast_node(AST_MATRIX_DECL, rows, cols);
+    node->value.strVal = strdup(name);
+    return node;
+}
+
+ASTNode* new_ast_matrix_access_node(char* name, ASTNode* row_idx, ASTNode* col_idx) { // <<< ADICIONADO
+    ASTNode* node = new_ast_node(AST_MATRIX_ACCESS, row_idx, col_idx);
+    node->value.strVal = strdup(name);
+    return node;
+}
+
 // Função recursiva para liberar a memória da árvore
 void free_ast(ASTNode* node) {
     if (!node) return;
@@ -56,11 +70,83 @@ void free_ast(ASTNode* node) {
     free_ast(node->right);
     free_ast(node->aux);
 
-    // Libera a string se ela existir (em nós ID ou STRING)
-    if (node->type == AST_IDENTIFIER || node->type == AST_STRING) {
+    if (node->type == AST_IDENTIFIER || node->type == AST_STRING || 
+        node->type == AST_MATRIX_DECL || node->type == AST_MATRIX_ACCESS) {
         free(node->value.strVal);
     }
     free(node);
+}
+
+// Esta função auxiliar converte um NodeType em uma string legível
+const char* nodetype_to_string(NodeType type) {
+    switch (type) {
+        case AST_NUMBER: return "NUMBER";
+        case AST_STRING: return "STRING";
+        case AST_IDENTIFIER: return "IDENTIFIER";
+        case AST_MATRIX_DECL: return "MATRIX_DECL";
+        case AST_MATRIX_ACCESS: return "MATRIX_ACCESS";
+        case AST_ADD: return "ADD";
+        case AST_SUB: return "SUB";
+        case AST_MUL: return "MUL";
+        case AST_DIV: return "DIV";
+        case AST_EQ: return "EQ";
+        case AST_NEQ: return "NEQ";
+        case AST_LT: return "LT";
+        case AST_GT: return "GT";
+        case AST_LTE: return "LTE";
+        case AST_GTE: return "GTE";
+        case AST_AND: return "AND";
+        case AST_OR: return "OR";
+        case AST_POW: return "POW";
+        case AST_UMINUS: return "UMINUS";
+        case AST_NOT: return "NOT";
+        case AST_ASSIGN: return "ASSIGN";
+        case AST_IF: return "IF";
+        case AST_WHILE: return "WHILE";
+        case AST_PRINTF: return "PRINTF";
+        case AST_INPUT: return "INPUT";
+        case AST_FUNC_CALL: return "FUNC_CALL";
+        case AST_ARG_LIST: return "ARG_LIST";
+        case AST_STATEMENT_LIST: return "STATEMENT_LIST";
+        default: return "UNKNOWN_NODE";
+    }
+}
+
+// Função recursiva que imprime a árvore com indentação
+void print_ast_recursive(ASTNode* node, int indent) {
+    if (node == NULL) {
+        return;
+    }
+
+    // Imprime a indentação
+    for (int i = 0; i < indent; ++i) {
+        printf("  ");
+    }
+
+    // Imprime o tipo do nó
+    printf("- %s", nodetype_to_string(node->type));
+
+    // Imprime o valor do nó, se for uma folha
+    if (node->type == AST_NUMBER) {
+        printf(": %f\n", node->value.floatVal);
+    } else if (node->type == AST_IDENTIFIER || node->type == AST_STRING || 
+               node->type == AST_MATRIX_DECL || node->type == AST_MATRIX_ACCESS) {
+        printf(": %s\n", node->value.strVal);
+    } else {
+        printf("\n");
+    }
+
+    // Chama recursivamente para os filhos
+    print_ast_recursive(node->left, indent + 1);
+    print_ast_recursive(node->right, indent + 1);
+    print_ast_recursive(node->aux, indent + 1);
+}
+
+// Função principal que inicia a impressão da AST
+void print_ast(ASTNode* root) {
+    printf("\n\n--- INICIO DA ARVORE SINTATICA (AST) ---\n");
+    print_ast_recursive(root, 0);
+    printf("--- FIM DA ARVORE SINTATICA (AST) ---\n\n");
 }
 
 // Função auxiliar para inferir o tipo de uma expressão
@@ -84,8 +170,7 @@ static DataType infer_type_from_expression(ASTNode* expr_node) {
             // Erro será pego no 'semantic_traverse'
             return TYPE_VOID;
         }
-        // Para expressões como (a + b), o tipo depende dos operandos.
-        // Por simplicidade, vamos assumir float para operações aritméticas.
+        case AST_MATRIX_ACCESS: return TYPE_FLOAT;
         case AST_ADD:
         case AST_SUB:
         case AST_MUL:
@@ -104,32 +189,70 @@ static void semantic_traverse(ASTNode* node) {
 
     // Ações pré-ordem (acontecem antes de visitar os filhos)
     switch (node->type) {
-        case AST_ASSIGN: {
-            ASTNode* var_node = node->left;
-            ASTNode* expr_node = node->right;
-            char* var_name = var_node->value.strVal;
-
-            // Primeiro, analisa a expressão à direita para resolver os tipos dela
-            semantic_traverse(expr_node);
-
-            // Agora, lida com a variável
-            Symbol* symbol = scope_lookup(var_name);
-            if (!symbol) {
-                // DECLARAÇÃO IMPLÍCITA: Variável não existe, vamos criá-la.
-                DataType new_type = infer_type_from_expression(expr_node);
-                if (new_type != TYPE_VOID) {
-                    scope_add_symbol(var_name, new_type, NULL, 0, 0);
-                } else {
-                    fprintf(stderr, "Erro semantico: Nao foi possivel inferir o tipo para a variavel '%s'.\n", var_name);
-                }
+        case AST_MATRIX_DECL: {
+            char* name = node->value.strVal;
+            
+            // 1. Verifica se o símbolo já existe no escopo atual
+            if (scope_lookup_current(name)) {
+                fprintf(stderr, "Erro semantico na linha %d: Redeclaracao da matriz '%s'.\n", yylineno, name);
             } else {
-                // REATRIBUIÇÃO: Variável já existe. Checar se os tipos são compatíveis.
-                DataType expr_type = infer_type_from_expression(expr_node);
-                if (symbol->type != expr_type && expr_type != TYPE_VOID) {
-                    fprintf(stderr, "Aviso: Atribuindo tipo incompátivel para a variavel '%s'.\n", var_name);
+                // 2. Extrai as dimensões. Assume que são literais numéricos por enquanto.
+                ASTNode* rows_node = node->left;
+                ASTNode* cols_node = node->right;
+
+                if (rows_node->type != AST_NUMBER || cols_node->type != AST_NUMBER) {
+                    fprintf(stderr, "Erro semantico na linha %d: Dimensoes da matriz '%s' devem ser numeros inteiros literais.\n", yylineno, name);
+                } else {
+                    int rows = (int)rows_node->value.floatVal;
+                    int cols = (int)cols_node->value.floatVal;
+                    
+                    // 3. Adiciona o símbolo à tabela
+                    scope_add_symbol(name, TYPE_MATRIX, NULL, rows, cols);
                 }
             }
-            return; // Já visitamos o filho direito, não precisa descer mais
+            // Não precisa descer recursivamente, pois já tratamos os filhos
+            return;
+        }
+
+        case AST_MATRIX_ACCESS: {
+            char* name = node->value.strVal;
+            Symbol* symbol = scope_lookup(name);
+
+            // 1. Verifica se a variável existe
+            if (!symbol) {
+                fprintf(stderr, "Erro semantico na linha %d: Matriz '%s' nao foi declarada.\n", yylineno, name);
+            } 
+            // 2. Verifica se é do tipo matriz
+            else if (symbol->type != TYPE_MATRIX) {
+                fprintf(stderr, "Erro semantico na linha %d: Variavel '%s' nao e uma matriz.\n", yylineno, name);
+            }
+            
+            // Analisa as expressões de índice
+            semantic_traverse(node->left);
+            semantic_traverse(node->right);
+            return;
+        }
+
+        case AST_ASSIGN: {
+            ASTNode* lhs = node->left;
+            ASTNode* rhs = node->right;
+            semantic_traverse(rhs);
+            DataType rhs_type = infer_type_from_expression(rhs);
+            
+            if (lhs->type == AST_IDENTIFIER) {
+                Symbol* symbol = scope_lookup(lhs->value.strVal);
+                if (!symbol) {
+                    scope_add_symbol(lhs->value.strVal, rhs_type, NULL, 0, 0);
+                } else if (symbol->type != rhs_type && rhs_type != TYPE_VOID) {
+                    fprintf(stderr, "Aviso na linha %d: Atribuindo tipo incompátivel para a variavel '%s'.\n", yylineno, lhs->value.strVal);
+                }
+            } else if (lhs->type == AST_MATRIX_ACCESS) {
+                semantic_traverse(lhs); // Analisa o acesso à matriz
+                if (rhs_type != TYPE_FLOAT && rhs_type != TYPE_VOID) {
+                    fprintf(stderr, "Aviso na linha %d: Elementos de matriz devem receber valores numericos.\n", yylineno);
+                }
+            }
+            return;
         }
 
         case AST_IDENTIFIER: {

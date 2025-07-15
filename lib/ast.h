@@ -7,6 +7,8 @@ typedef enum {
     AST_NUMBER,
     AST_STRING,
     AST_IDENTIFIER,
+    AST_MATRIX_DECL,     // Para 'matrix A[2,2];'
+    AST_MATRIX_ACCESS,    // Para 'A[0,0]'
 
     // Nós de Operações Binárias (ex: a + b)
     AST_ADD,
@@ -35,6 +37,7 @@ typedef enum {
     AST_PRINTF,
     AST_INPUT,
     AST_FUNC_CALL,
+    AST_ARG_LIST,
     
     // Nó para sequências de comandos
     AST_STATEMENT_LIST
@@ -65,7 +68,10 @@ ASTNode* new_ast_leaf_number(double value);
 ASTNode* new_ast_leaf_id(char* name);
 ASTNode* new_ast_leaf_string(char* str);
 ASTNode* new_ast_if_node(ASTNode* condition, ASTNode* if_body, ASTNode* else_body);
+ASTNode* new_ast_matrix_decl_node(char* name, ASTNode* rows, ASTNode* cols);
+ASTNode* new_ast_matrix_access_node(char* name, ASTNode* row_idx, ASTNode* col_idx);
 void free_ast(ASTNode* node);
 void analyze_semantics(ASTNode* node);
+void print_ast(ASTNode* root);
 
 #endif // AST_H

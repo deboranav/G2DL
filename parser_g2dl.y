@@ -51,6 +51,7 @@ extern FILE *yyin;
 %type <node> program statements statement block
 %type <node> expression assignment variable control_structure 
 %type <node> printf_statement argument_list function_call
+%type <node> matrix_declaration matrix_access
 
 /* --- Precedência e Associatividade --- */
 %left OR
@@ -92,11 +93,19 @@ statements:
 
 statement:
     assignment ';'      { $$ = $1; }
-    | expression ';'      { $$ = $1; } /* Uma expressão pode ser um statement, como uma chamada de função */
+    | expression ';'      { $$ = $1; }
+    | matrix_declaration ';' { $$ = $1; }
     | control_structure { $$ = $1; }
     | printf_statement  { $$ = $1; }
     | block             { $$ = $1; }
     | error ';'         { yyerrok; $$ = NULL; }
+    ;
+
+matrix_declaration:
+    MATRIX ID LEFT_SQUARE_BRACKET expression COMMA expression RIGHT_SQUARE_BRACKET
+    {
+        $$ = new_ast_matrix_decl_node($2, $4, $6);
+    }
     ;
 
 block:
@@ -162,6 +171,14 @@ expression:
 
 variable:
     ID { $$ = new_ast_leaf_id($1); }
+    | matrix_access { $$ = $1; }
+    ;
+
+matrix_access:
+    ID LEFT_SQUARE_BRACKET expression COMMA expression RIGHT_SQUARE_BRACKET
+    {
+        $$ = new_ast_matrix_access_node($1, $3, $5);
+    }
     ;
 
 /*==================================================================
@@ -189,8 +206,8 @@ function_call:
 
 argument_list:
     /* vazio */ { $$ = NULL; }
-    | expression { $$ = $1; } /* Uma lista de 1 argumento é só o próprio nó */
-    | argument_list COMMA expression { $$ = new_ast_node(AST_STATEMENT_LIST, $1, $3); } /* Reutilizando o nó de lista */
+    | expression { $$ = $1; }
+    | argument_list COMMA expression { $$ = new_ast_node(AST_ARG_LIST, $1, $3); } 
     ;
 
 %%
@@ -224,6 +241,8 @@ int main(int argc, char *argv[]) {
 
     if (result == 0 && global_ast_root != NULL) {
         printf("/* Analise semantica iniciada... */\n");
+
+        //print_ast(global_ast_root); caso necessario
     
         // PASSO 1: Análise Semântica
         analyze_semantics(global_ast_root);

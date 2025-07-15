@@ -2,8 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "ast.h" // Incluído para ter acesso à enumeração NodeType
 
-// --- Estrutura para rastrear variáveis já declaradas ---
+// --- Estrutura para rastrear variáveis escalares já declaradas em C ---
 typedef struct DeclaredVar {
     char* name;
     struct DeclaredVar* next;
@@ -40,15 +41,16 @@ static void free_declared_vars() {
         free(temp->name);
         free(temp);
     }
+    declared_vars_head = NULL; // Reseta a lista
 }
+// --- Fim da estrutura de rastreamento ---
+
 
 static void generate_code_recursive(ASTNode* node, int indent_level);
 
-// Função principal que inicia a geração de código
 void generate_code(ASTNode* root) {
     if (!root) return;
 
-    // Cabeçalhos C padrão
     printf("#include <stdio.h>\n");
     printf("#include <stdlib.h>\n");
     printf("#include <string.h>\n");
@@ -57,19 +59,16 @@ void generate_code(ASTNode* root) {
     
     printf("int main() {\n");
     
-    // Inicia a geração recursiva a partir da raiz
-    generate_code_recursive(root, 1); // Nível 1 de indentação
+    generate_code_recursive(root, 1);
     
     printf("\n    return 0;\n}\n");
 
-    free_declared_vars();
+    free_declared_vars(); // Limpa a lista no final de cada geração
 }
 
-// Função recursiva que percorre a árvore
 void generate_code_recursive(ASTNode* node, int indent_level) {
     if (!node) return;
 
-    // Helper para indentação
     char indent[100];
     for(int i = 0; i < indent_level * 4; ++i) indent[i] = ' ';
     indent[indent_level * 4] = '\0';
@@ -79,30 +78,38 @@ void generate_code_recursive(ASTNode* node, int indent_level) {
             generate_code_recursive(node->left, indent_level);
             generate_code_recursive(node->right, indent_level);
             break;
-
-        case AST_NUMBER:
-            printf("%f", node->value.floatVal);
-            break;
-
-        case AST_IDENTIFIER:
-            printf("%s", node->value.strVal);
-            break;
-
-        case AST_ADD:
-            printf("(");
+            
+        case AST_ARG_LIST:
             generate_code_recursive(node->left, 0);
-            printf(" + ");
+            printf(", ");
             generate_code_recursive(node->right, 0);
-            printf(")");
+            break;
+
+        case AST_MATRIX_DECL:
+            printf("%sdouble %s[", indent, node->value.strVal);
+            generate_code_recursive(node->left, 0);
+            printf("][");
+            generate_code_recursive(node->right, 0);
+            printf("];\n");
+            break;
+
+        case AST_MATRIX_ACCESS:
+            printf("%s[", node->value.strVal);
+            generate_code_recursive(node->left, 0);
+            printf("][");
+            generate_code_recursive(node->right, 0);
+            printf("]");
             break;
 
         case AST_ASSIGN: {
-            char* var_name = node->left->value.strVal;
             printf("%s", indent);
-
-            if (!is_var_declared(var_name)) {
-                printf("double ");
-                add_declared_var(var_name);
+            
+            // Lida com a declaração de variável escalar (não-matriz) na primeira vez
+            if (node->left->type == AST_IDENTIFIER) {
+                if (!is_var_declared(node->left->value.strVal)) {
+                    printf("double ");
+                    add_declared_var(node->left->value.strVal);
+                }
             }
             
             generate_code_recursive(node->left, 0);
@@ -112,73 +119,81 @@ void generate_code_recursive(ASTNode* node, int indent_level) {
             break;
         }
 
-        case AST_IF:
-            printf("%sif (", indent);
-            generate_code_recursive(node->left, 0); // Condição
-            printf(") {\n");
-            generate_code_recursive(node->right, indent_level + 1); // Corpo do IF
-            printf("%s}\n", indent);
-            if (node->aux) { // Existe um ELSE
-                printf("%selse {\n", indent);
-                generate_code_recursive(node->aux, indent_level + 1);
-                printf("%s}\n", indent);
+        case AST_NUMBER:
+            if (node->value.floatVal == (int)node->value.floatVal) {
+                printf("%d", (int)node->value.floatVal);
+            } else {
+                printf("%f", node->value.floatVal);
             }
             break;
-
-        case AST_INPUT:
-            printf("runtime_input_c()");
-            break;
-        
+            
         case AST_PRINTF:
             printf("%s", indent);
             printf("printf(");
-            generate_code_recursive(node->left, 0); // O formato da string
+            generate_code_recursive(node->left, 0);
             if (node->right) {
                 printf(", ");
-                generate_code_recursive(node->right, 0); // A lista de argumentos
+                generate_code_recursive(node->right, 0);
             }
             printf(");\n");
             break;
         
-        case AST_SUB:
-            printf("(");
-            generate_code_recursive(node->left, 0);
-            printf(" - ");
-            generate_code_recursive(node->right, 0);
-            printf(")");
+        case AST_STRING: 
+            printf("%s", node->value.strVal); 
             break;
 
-        case AST_MUL:
-            printf("(");
-            generate_code_recursive(node->left, 0);
-            printf(" * ");
-            generate_code_recursive(node->right, 0);
-            printf(")");
-            break;
-        
-        case AST_DIV:
-            printf("(");
-            generate_code_recursive(node->left, 0);
-            printf(" / ");
-            generate_code_recursive(node->right, 0);
-            printf(")");
+        case AST_IDENTIFIER: 
+            printf("%s", node->value.strVal); 
             break;
 
-        case AST_POW:
-            printf("pow(");
+        case AST_INPUT: 
+            printf("runtime_input_c()"); 
+            break;
+        
+        case AST_IF:
+            printf("%sif (", indent);
             generate_code_recursive(node->left, 0);
-            printf(", ");
-            generate_code_recursive(node->right, 0);
-            printf(")");
+            printf(") {\n");
+            generate_code_recursive(node->right, indent_level + 1);
+            printf("\n%s}", indent);
+            if (node->aux) {
+                if (node->aux->type == AST_IF) {
+                    printf(" else ");
+                    generate_code_recursive(node->aux, indent_level);
+                } else {
+                    printf(" else {\n");
+                    generate_code_recursive(node->aux, indent_level + 1);
+                    printf("\n%s}", indent);
+                }
+            }
+            printf("\n");
             break;
-        
-        case AST_STRING:
-            printf("%s", node->value.strVal);
+
+        case AST_WHILE:
+            printf("%swhile (", indent);
+            generate_code_recursive(node->left, 0);
+            printf(") {\n");
+            generate_code_recursive(node->right, indent_level + 1);
+            printf("\n%s}\n", indent);
             break;
-        
+
+        // --- OPERADORES ---
+        case AST_ADD: printf("("); generate_code_recursive(node->left, 0); printf(" + "); generate_code_recursive(node->right, 0); printf(")"); break;
+        case AST_SUB: printf("("); generate_code_recursive(node->left, 0); printf(" - "); generate_code_recursive(node->right, 0); printf(")"); break;
+        case AST_MUL: printf("("); generate_code_recursive(node->left, 0); printf(" * "); generate_code_recursive(node->right, 0); printf(")"); break;
+        case AST_DIV: printf("("); generate_code_recursive(node->left, 0); printf(" / "); generate_code_recursive(node->right, 0); printf(")"); break;
+        case AST_POW: printf("pow("); generate_code_recursive(node->left, 0); printf(", "); generate_code_recursive(node->right, 0); printf(")"); break;
+        case AST_AND: printf("("); generate_code_recursive(node->left, 0); printf(" && "); generate_code_recursive(node->right, 0); printf(")"); break;
+        case AST_OR:  printf("("); generate_code_recursive(node->left, 0); printf(" || "); generate_code_recursive(node->right, 0); printf(")"); break;
+        case AST_EQ:  printf("("); generate_code_recursive(node->left, 0); printf(" == "); generate_code_recursive(node->right, 0); printf(")"); break;
+        case AST_NEQ: printf("("); generate_code_recursive(node->left, 0); printf(" != "); generate_code_recursive(node->right, 0); printf(")"); break;
+        case AST_GT:  printf("("); generate_code_recursive(node->left, 0); printf(" > "); generate_code_recursive(node->right, 0); printf(")"); break;
+        case AST_LT:  printf("("); generate_code_recursive(node->left, 0); printf(" < "); generate_code_recursive(node->right, 0); printf(")"); break;
+        case AST_GTE: printf("("); generate_code_recursive(node->left, 0); printf(" >= "); generate_code_recursive(node->right, 0); printf(")"); break;
+        case AST_LTE: printf("("); generate_code_recursive(node->left, 0); printf(" <= "); generate_code_recursive(node->right, 0); printf(")"); break;
+
         default:
             fprintf(stderr, "Aviso: Gerador de codigo nao implementado para o no tipo %d\n", node->type);
             break;
-        
     }
 }
