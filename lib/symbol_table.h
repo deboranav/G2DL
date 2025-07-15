@@ -14,6 +14,7 @@
 typedef struct Member {
     char *name;
     DataType type;
+    char *typeName;
     struct Member *next;
 } Member;
 
@@ -29,6 +30,7 @@ typedef struct Symbol {
     char *typeName;
     int rows;
     int cols;
+    Member* params;
     struct Symbol *next;
 } Symbol;
 
@@ -44,8 +46,7 @@ void scope_init();
 void scope_enter();
 void scope_leave();
 
-// MUDANÇA: Assinatura da função corrigida para aceitar todos os dados necessários.
-void scope_add_symbol(const char *name, DataType type, const char* typeName, int rows, int cols);
+void scope_add_symbol(const char *name, DataType type, const char* typeName, int rows, int cols, Member* params);
 
 Symbol* scope_lookup(const char *name);
 Symbol* scope_lookup_current(const char *name);

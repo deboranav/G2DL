@@ -42,16 +42,19 @@ extern FILE *yyin;
 %token AND OR NOT
 %token LEFT_PARENTHESIS RIGHT_PARENTHESIS LEFT_CURLY_BRACKET RIGHT_CURLY_BRACKET
 %token LEFT_SQUARE_BRACKET RIGHT_SQUARE_BRACKET
-%token COMMA COLON
+%token COMMA COLON SEMICOLON
 %token PRINTF
 %token INPUT
 %token PLUS_ASSIGNMENT MINUS_ASSIGNMENT MULTIPLY_ASSIGNMENT DIVIDE_ASSIGNMENT MOD_ASSIGNMENT POWER_ASSIGNMENT
 
 /* --- Tipos dos Não-Terminais --- */
-%type <node> program statements statement block
+%type <node> program top_level_declarations top_level_declaration
+%type <node> function_declaration type_definition variable_declaration
+%type <node> statements statement block
 %type <node> expression assignment variable control_structure 
 %type <node> printf_statement argument_list function_call
 %type <node> matrix_declaration matrix_access
+%type <node> type_specifier param_list parameter return_statement
 
 /* --- Precedência e Associatividade --- */
 %left OR
@@ -60,6 +63,7 @@ extern FILE *yyin;
 %left LESS_THAN GREATER_THAN LESS_THAN_OR_EQUAL GREATER_THAN_OR_EQUAL
 %left PLUS MINUS
 %left MULTIPLY DIVIDE MOD
+%left DOT
 %right POWER
 %right NOT
 %right UMINUS
@@ -75,8 +79,52 @@ extern FILE *yyin;
  *==================================================================*/
 
 program:
-    statements { global_ast_root = $1; }
+    top_level_declarations { global_ast_root = $1; }
     ;
+
+top_level_declarations:
+    /* vazio */ { $$ = NULL; }
+    | top_level_declarations top_level_declaration {
+        if ($1 == NULL) { $$ = $2; }
+        else { $$ = new_ast_node(AST_STATEMENT_LIST, $1, $2); }
+    }
+    ;
+
+top_level_declaration:
+    function_declaration { $$ = $1; }
+    | type_definition    { $$ = $1; }
+    | statement          { $$ = $1; } // Para printf's globais
+    ;
+
+/*==================================================================
+ * DEFINIÇÕES DE TIPOS E FUNÇÕES
+ *==================================================================*/
+
+type_definition:
+    TYPE_DEF ID LEFT_CURLY_BRACKET statements RIGHT_CURLY_BRACKET SEMICOLON {
+        $$ = new_ast_type_def_node(new_ast_leaf_id($2), $4);
+    }
+    ;
+
+function_declaration:
+    FUNCTION type_specifier ID LEFT_PARENTHESIS param_list RIGHT_PARENTHESIS block {
+        $$ = new_ast_func_def_node($2, new_ast_leaf_id($3), $5, $7);
+    }
+    ;
+
+param_list:
+    /* vazio */ { $$ = NULL; }
+    | parameter { $$ = $1; }
+    | param_list COMMA parameter { $$ = new_ast_node(AST_PARAM_LIST, $1, $3); }
+    ;
+
+parameter:
+    type_specifier ID { $$ = new_ast_param_node($1, new_ast_leaf_id($2)); }
+    ;
+
+/*==================================================================
+ * STATEMENTS E BLOCOS
+ *==================================================================*/
 
 statements:
     /* vazio */ { $$ = NULL; }
@@ -92,20 +140,28 @@ statements:
     ;
 
 statement:
-    assignment ';'      { $$ = $1; }
-    | expression ';'      { $$ = $1; }
-    | matrix_declaration ';' { $$ = $1; }
-    | control_structure { $$ = $1; }
-    | printf_statement  { $$ = $1; }
-    | block             { $$ = $1; }
-    | error ';'         { yyerrok; $$ = NULL; }
+    expression ';'           { $$ = $1; }
+    | assignment ';'           { $$ = $1; } 
+    | variable_declaration ';' { $$ = $1; }
+    | matrix_declaration ';'   { $$ = $1; }
+    | printf_statement       { $$ = $1; }
+    | return_statement ';'     { $$ = $1; }
+    | control_structure      { $$ = $1; }
+    | block                  { $$ = $1; }
+    | error SEMICOLON        { yyerrok; $$ = NULL; }
     ;
 
-matrix_declaration:
-    MATRIX ID LEFT_SQUARE_BRACKET expression COMMA expression RIGHT_SQUARE_BRACKET
-    {
-        $$ = new_ast_matrix_decl_node($2, $4, $6);
-    }
+return_statement:
+    RETURN expression { $$ = new_ast_node(AST_RETURN, $2, NULL); }
+    ;
+
+variable_declaration:
+    type_specifier ID { $$ = new_ast_var_decl_node($1, new_ast_leaf_id($2)); }
+    ;
+
+type_specifier:
+    FLOAT { $$ = new_ast_leaf_type("float"); }
+    | ID    { $$ = new_ast_leaf_type($1); } // Para tipos como rational_t
     ;
 
 block:
@@ -172,6 +228,14 @@ expression:
 variable:
     ID { $$ = new_ast_leaf_id($1); }
     | matrix_access { $$ = $1; }
+    | variable DOT ID { $$ = new_ast_node(AST_MEMBER_ACCESS, $1, new_ast_leaf_id($3)); }
+    ;
+
+matrix_declaration:
+    MATRIX ID LEFT_SQUARE_BRACKET expression COMMA expression RIGHT_SQUARE_BRACKET
+    {
+        $$ = new_ast_matrix_decl_node($2, $4, $6);
+    }
     ;
 
 matrix_access:

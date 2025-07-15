@@ -85,15 +85,28 @@ void scope_leave() {
     current_scope = parent_scope;
 }
 
-void scope_add_symbol(const char *name, DataType type, const char* typeName, int rows, int cols) {
-    if (current_scope == NULL) return;
-    unsigned int index = hash(name);
+void scope_add_symbol(const char *name, DataType type, const char* typeName, int rows, int cols, Member* params) {
+    if (current_scope == NULL) {
+        fprintf(stderr, "Erro: nenhum escopo ativo para adicionar simbolo.\n");
+        return;
+    }
+
+    unsigned int index = hash(name) % HASH_TABLE_SIZE;
+    
     Symbol *new_symbol = (Symbol*) malloc(sizeof(Symbol));
+    if (!new_symbol) {
+        fprintf(stderr, "Falha ao alocar memória para novo simbolo.\n");
+        exit(1);
+    }
+
     new_symbol->name = strdup(name);
     new_symbol->type = type;
     new_symbol->typeName = typeName ? strdup(typeName) : NULL;
     new_symbol->rows = rows;
     new_symbol->cols = cols;
+    new_symbol->params = params;
+    
+    // Adiciona o novo símbolo no início da lista ligada no índice da hash table
     new_symbol->next = current_scope->hash_table[index];
     current_scope->hash_table[index] = new_symbol;
 }

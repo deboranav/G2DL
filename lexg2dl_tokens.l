@@ -63,7 +63,7 @@
 ","                        { return COMMA; }
 "."                        { return DOT; }
 ":"                        { return COLON; }
-";"                        { return ';'; }
+";"                        { return SEMICOLON; }
 
 
 "int"                      { return INT; }
